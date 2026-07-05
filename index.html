@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const tactileStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
-    --bg-base: #1a1c23;
-    --panel-surface: #22252d;
-    --shadow-light: #2d313c;
-    --shadow-dark: #111318;
-    --accent-cyan: #00e5ff;
-    --accent-pink: #ff2a6d;
-    --text-main: #e2e8f0;
-    --text-muted: #828c9a;
+    --bg-base: #1c1e24;
+    --panel-surface: #21242b;
+    --shadow-light: #2c3039;
+    --shadow-dark: #16181d;
+    --accent-cyan: #00d4ff;
+    --accent-pink: #f83270;
+    --text-main: #f8fafc;
+    --text-muted: #8b95a5;
+    --border-glass: rgba(255, 255, 255, 0.04);
   }
 
   body {
@@ -21,105 +22,131 @@ const tactileStyles = `
     margin: 0;
     padding: 0;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* 3D Tactile Panel */
+  /* 3D Tactile Panel - Smoother, cleaner */
   .tactile-panel {
     background: var(--panel-surface);
-    border-radius: 24px;
+    border-radius: 20px;
     box-shadow: 
-      12px 12px 24px var(--shadow-dark),
-      -12px -12px 24px var(--shadow-light);
-    border: 1px solid rgba(255, 255, 255, 0.02);
+      10px 10px 20px var(--shadow-dark),
+      -10px -10px 20px var(--shadow-light);
+    border: 1px solid var(--border-glass);
   }
 
-  /* 3D Tactile Inset (for screens, tracks) */
+  /* 3D Tactile Inset - For tracks/screens */
   .tactile-inset {
     background: var(--bg-base);
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: 
-      inset 8px 8px 16px var(--shadow-dark),
-      inset -8px -8px 16px var(--shadow-light);
+      inset 6px 6px 12px var(--shadow-dark),
+      inset -6px -6px 12px var(--shadow-light);
+    border: 1px solid rgba(0,0,0,0.2);
   }
 
-  /* 3D Tactile Button */
+  /* 3D Tactile Button - More refined, better hover state */
   .tactile-btn {
-    background: linear-gradient(145deg, #252830, #1e2129);
-    border-radius: 12px;
+    background: var(--panel-surface);
+    border-radius: 10px;
     color: var(--text-main);
     font-weight: 600;
-    border: none;
+    letter-spacing: 0.3px;
+    border: 1px solid var(--border-glass);
     box-shadow: 
-      6px 6px 12px var(--shadow-dark),
-      -6px -6px 12px var(--shadow-light);
-    transition: all 0.15s ease;
+      5px 5px 10px var(--shadow-dark),
+      -5px -5px 10px var(--shadow-light);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 24px;
+    padding: 10px 20px;
   }
 
   .tactile-btn:hover {
     color: var(--accent-cyan);
+    box-shadow: 
+      7px 7px 14px var(--shadow-dark),
+      -7px -7px 14px var(--shadow-light);
+    transform: translateY(-1px);
   }
 
   .tactile-btn:active {
-    background: var(--panel-surface);
+    background: var(--bg-base);
     box-shadow: 
-      inset 6px 6px 12px var(--shadow-dark),
-      inset -6px -6px 12px var(--shadow-light);
+      inset 5px 5px 10px var(--shadow-dark),
+      inset -5px -5px 10px var(--shadow-light);
+    transform: translateY(1px);
     color: var(--accent-cyan);
+    border-color: transparent;
   }
 
   .tactile-btn.primary {
-    background: linear-gradient(145deg, #00b3cc, #00e5ff);
-    color: #000;
+    background: linear-gradient(135deg, #00b8e6, #00d4ff);
+    color: #002833;
+    border: none;
     box-shadow: 
-      6px 6px 16px rgba(0, 229, 255, 0.2),
-      -6px -6px 16px var(--shadow-light);
+      5px 5px 15px rgba(0, 212, 255, 0.25),
+      -5px -5px 15px var(--shadow-light);
+  }
+  
+  .tactile-btn.primary:hover {
+    box-shadow: 
+      8px 8px 20px rgba(0, 212, 255, 0.35),
+      -5px -5px 15px var(--shadow-light);
   }
 
   .tactile-btn.primary:active {
+    background: linear-gradient(135deg, #009ac2, #00b8e6);
     box-shadow: 
-      inset 6px 6px 12px rgba(0, 150, 180, 0.5),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.3);
+      inset 5px 5px 10px rgba(0, 40, 50, 0.5),
+      inset -5px -5px 10px rgba(255, 255, 255, 0.2);
   }
 
   .tactile-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
   }
 
-  /* 3D Slider */
+  /* Clean 3D Slider */
   .tactile-slider {
     -webkit-appearance: none;
     width: 100%;
-    height: 12px;
+    height: 10px;
     background: var(--bg-base);
-    border-radius: 6px;
+    border-radius: 8px;
     outline: none;
     box-shadow: 
-      inset 3px 3px 6px var(--shadow-dark),
-      inset -3px -3px 6px var(--shadow-light);
+      inset 4px 4px 8px var(--shadow-dark),
+      inset -4px -4px 8px var(--shadow-light);
+    border: 1px solid rgba(0,0,0,0.15);
   }
 
   .tactile-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #3a3f4c, #1a1c23);
+    background: var(--panel-surface);
     cursor: pointer;
+    box-shadow: 
+      3px 3px 6px var(--shadow-dark),
+      -3px -3px 6px var(--shadow-light),
+      inset 1px 1px 2px rgba(255,255,255,0.1);
+    border: 2px solid var(--accent-cyan);
+    transition: all 0.15s ease;
+  }
+
+  .tactile-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
     box-shadow: 
       4px 4px 8px var(--shadow-dark),
       -4px -4px 8px var(--shadow-light),
-      inset 2px 2px 4px rgba(255,255,255,0.1);
-    border: 2px solid var(--accent-cyan);
-    transition: transform 0.1s;
+      0 0 10px rgba(0, 212, 255, 0.4);
   }
 
   .tactile-slider::-webkit-slider-thumb:active {
@@ -128,19 +155,20 @@ const tactileStyles = `
     box-shadow: 0 0 15px var(--accent-cyan);
   }
 
-  /* 3D Tactile Input */
+  /* Clean 3D Input */
   .tactile-input {
     width: 100%;
     box-sizing: border-box;
     background: var(--bg-base);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 10px 14px;
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    padding: 12px 16px;
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
     box-shadow: 
-      inset 3px 3px 6px var(--shadow-dark),
-      inset -3px -3px 6px var(--shadow-light);
+      inset 4px 4px 8px var(--shadow-dark),
+      inset -4px -4px 8px var(--shadow-light);
     outline: none;
     transition: all 0.2s ease;
   }
@@ -148,9 +176,9 @@ const tactileStyles = `
   .tactile-input:focus {
     border-color: var(--accent-cyan);
     box-shadow: 
-      inset 3px 3px 6px var(--shadow-dark),
-      inset -3px -3px 6px var(--shadow-light),
-      0 0 8px rgba(0, 229, 255, 0.2);
+      inset 4px 4px 8px var(--shadow-dark),
+      inset -4px -4px 8px var(--shadow-light),
+      0 0 10px rgba(0, 212, 255, 0.15);
   }
 
   .tactile-input:disabled {
@@ -158,16 +186,23 @@ const tactileStyles = `
     cursor: not-allowed;
   }
 
-  /* Canvas styling */
+  /* Layout Helpers */
   canvas {
     width: 100%;
     height: 120px;
     display: block;
-    border-radius: 12px;
+    border-radius: 8px;
   }
 
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .parameter-group {
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(28, 30, 36, 0.5);
+    border: 1px solid var(--border-glass);
   }
 `;
 
@@ -748,38 +783,39 @@ export default function AudioProcessor() {
   return (
     <>
       <style>{tactileStyles}</style>
-      <div className="min-h-screen p-6 flex flex-col items-center justify-center">
+      <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
         
-        <div className="w-full max-w-4xl space-y-8">
+        <div className="w-full max-w-6xl space-y-8">
           
           {/* Header */}
-          <div className="text-center mb-10 relative">
+          <div className="text-center mb-12 relative flex flex-col items-center">
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-[--text-main]">
+              Smart <span className="text-transparent bg-clip-text bg-gradient-to-r from-[--accent-cyan] to-[--accent-pink]">Silence Remover</span>
+            </h1>
+            <p className="text-[--text-muted] font-medium tracking-wide">Clean Audio Processor • 3D Tactile Engine</p>
+            
             <button 
               onClick={resetAll}
-              className="absolute right-0 top-0 tactile-btn !px-4 !py-2 text-sm flex items-center gap-2 hover:!text-[--accent-pink]"
+              className="absolute right-0 top-0 tactile-btn !px-4 !py-2 text-sm text-[--text-muted] hover:!text-[--accent-pink]"
               title="Reset Workspace"
             >
               <Icons.Reset />
               Reset
             </button>
-            <h1 className="text-4xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-[--accent-cyan] to-[--accent-pink]">
-              Smart Silence Remover
-            </h1>
-            <p className="text-[--text-muted]">Advanced DSP Audio Processor with 3D Tactile UI</p>
           </div>
 
           {/* Main Workspace Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Left Column: Waveforms & Upload */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-7 xl:col-span-8 space-y-6">
               
               {/* Upload Zone */}
               <div 
-                className={`tactile-panel p-8 flex flex-col items-center justify-center gap-4 transition-all duration-200 border-2 border-dashed ${
+                className={`tactile-panel p-10 flex flex-col items-center justify-center gap-5 transition-all duration-300 border-2 border-dashed ${
                   isDragging 
-                    ? 'border-[--accent-cyan] bg-[#1d2027] shadow-[0_0_20px_rgba(0,229,255,0.15)] scale-[1.02]' 
-                    : 'border-transparent hover:border-[rgba(255,255,255,0.1)]'
+                    ? 'border-[--accent-cyan] bg-[--bg-base] shadow-[0_0_30px_rgba(0,212,255,0.15)] scale-[1.02]' 
+                    : 'border-[var(--border-glass)] hover:border-[rgba(255,255,255,0.1)]'
                 }`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
@@ -793,15 +829,15 @@ export default function AudioProcessor() {
                   }
                 }}
               >
-                <div className={`p-4 rounded-full transition-colors ${isDragging ? 'bg-[--accent-cyan] text-black' : 'bg-[--bg-base] text-[--text-muted]'}`}>
+                <div className={`p-5 rounded-full transition-colors ${isDragging ? 'bg-[--accent-cyan] text-[--bg-base]' : 'bg-[--bg-base] text-[--text-muted]'}`}>
                   <Icons.Upload />
                 </div>
                 <div className="text-center">
-                  <h3 className="font-semibold text-xl mb-1">
-                    {isDragging ? 'Drop it here!' : 'Upload Source Audio'}
+                  <h3 className="font-bold text-xl mb-2 text-[--text-main]">
+                    {isDragging ? 'Drop audio file here!' : 'Upload Source Audio'}
                   </h3>
-                  <p className="text-sm text-[--text-muted] mb-5">
-                    {fileName ? `Loaded: ${fileName}` : "Drag & drop an audio file here, or click to browse"}
+                  <p className="text-sm text-[--text-muted] mb-6 max-w-xs mx-auto">
+                    {fileName ? `Loaded: ${fileName}` : "Drag & drop an audio file here, or click to browse your device."}
                   </p>
                   <label className="tactile-btn cursor-pointer inline-flex">
                     <span>Browse Files</span>
@@ -811,60 +847,68 @@ export default function AudioProcessor() {
               </div>
 
               {/* Original Waveform */}
-              <div className={`tactile-panel p-6 transition-opacity ${!originalBuffer ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
+              <div className={`tactile-panel p-6 transition-opacity duration-300 ${!originalBuffer ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className="flex justify-between items-center mb-5">
+                  <div className="flex items-center gap-4">
                     <button 
-                      className="tactile-btn !p-2 !rounded-full"
+                      className="tactile-btn !p-3 !rounded-full"
                       onClick={() => togglePlay(true)}
                     >
                       {isPlayingOrig ? <Icons.Pause /> : <Icons.Play />}
                     </button>
-                    <span className="font-mono text-sm">
-                      {originalBuffer ? formatTime(playbackPosOrig * originalBuffer.duration) : "00:00.00"} 
-                      <span className="text-[--text-muted]"> / {originalBuffer ? formatTime(originalBuffer.duration) : "00:00.00"}</span>
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-mono text-[--text-main] font-medium tracking-wide">
+                        {originalBuffer ? formatTime(playbackPosOrig * originalBuffer.duration) : "00:00.00"}
+                      </span>
+                      <span className="font-mono text-xs text-[--text-muted]">
+                        Total: {originalBuffer ? formatTime(originalBuffer.duration) : "00:00.00"}
+                      </span>
+                    </div>
                   </div>
                   <span className="text-xs uppercase tracking-widest text-[--text-muted] font-bold">Original</span>
                 </div>
-                <div className="tactile-inset p-2 relative">
-                  <canvas ref={origCanvasRef} className="w-full h-24 bg-transparent"></canvas>
+                <div className="tactile-inset p-2">
+                  <canvas ref={origCanvasRef} className="w-full bg-transparent"></canvas>
                 </div>
               </div>
 
               {/* Processed Waveform */}
-              <div className={`tactile-panel p-6 transition-opacity ${!processedBuffer ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
+              <div className={`tactile-panel p-6 transition-opacity duration-300 ${!processedBuffer ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className="flex justify-between items-center mb-5">
+                  <div className="flex items-center gap-4">
                     <button 
-                      className="tactile-btn !p-2 !rounded-full"
+                      className="tactile-btn !p-3 !rounded-full"
                       onClick={() => togglePlay(false)}
                     >
                       {isPlayingProc ? <Icons.Pause /> : <Icons.Play />}
                     </button>
-                    <span className="font-mono text-sm">
-                      {processedBuffer ? formatTime(playbackPosProc * processedBuffer.duration) : "00:00.00"}
-                      <span className="text-[--text-muted]"> / {processedBuffer ? formatTime(processedBuffer.duration) : "00:00.00"}</span>
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-mono text-[--text-main] font-medium tracking-wide">
+                        {processedBuffer ? formatTime(playbackPosProc * processedBuffer.duration) : "00:00.00"}
+                      </span>
+                      <span className="font-mono text-xs text-[--text-muted]">
+                        Total: {processedBuffer ? formatTime(processedBuffer.duration) : "00:00.00"}
+                      </span>
+                    </div>
                   </div>
                   <span className="text-xs uppercase tracking-widest text-[--accent-cyan] font-bold">Processed</span>
                 </div>
-                <div className="tactile-inset p-2 relative">
-                  <canvas ref={procCanvasRef} className="w-full h-24 bg-transparent"></canvas>
+                <div className="tactile-inset p-2">
+                  <canvas ref={procCanvasRef} className="w-full bg-transparent"></canvas>
                 </div>
                 
                 {/* Stats Summary */}
                 {processedBuffer && originalBuffer && (
-                  <div className="mt-4 flex gap-4 text-sm bg-[--bg-base] p-3 rounded-xl border border-[--shadow-light]">
-                    <div className="flex-1 text-center border-r border-[--shadow-light]">
-                      <div className="text-[--text-muted] text-xs uppercase mb-1">Time Saved</div>
-                      <div className="font-mono text-[--accent-pink] font-bold">
+                  <div className="mt-5 flex gap-4 text-sm bg-[--bg-base] p-4 rounded-xl border border-[--border-glass] shadow-inner">
+                    <div className="flex-1 text-center border-r border-[--border-glass]">
+                      <div className="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Time Saved</div>
+                      <div className="font-mono text-[--accent-pink] font-bold text-lg">
                         {formatTime(originalBuffer.duration - processedBuffer.duration)}
                       </div>
                     </div>
                     <div className="flex-1 text-center">
-                      <div className="text-[--text-muted] text-xs uppercase mb-1">Reduction</div>
-                      <div className="font-mono text-[--accent-cyan] font-bold">
+                      <div className="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Reduction</div>
+                      <div className="font-mono text-[--accent-cyan] font-bold text-lg">
                         {Math.round((1 - (processedBuffer.duration / originalBuffer.duration)) * 100)}%
                       </div>
                     </div>
@@ -875,88 +919,88 @@ export default function AudioProcessor() {
             </div>
 
             {/* Right Column: Controls */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="lg:col-span-5 xl:col-span-4 space-y-6">
               
               <div className="tactile-panel p-6 h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-6 border-b border-[--shadow-light] pb-4">
-              <Icons.Settings />
-              <h3 className="font-bold text-xl">Parameters</h3>
-            </div>
-
-            <div className="space-y-8 flex-1">
-              
-              {/* Smart Actions */}
-              <div className="p-4 rounded-xl bg-[--bg-base] border border-[--shadow-light] space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-[--text-main]">
-                  <Icons.Sparkles /> Smart Controls
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[--border-glass]">
+                  <div className="text-[--accent-cyan]"><Icons.Settings /></div>
+                  <h3 className="font-bold text-xl text-[--text-main]">Parameters</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => applyPreset('natural')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23]">
-                    Auto-Detect (Natural)
-                  </button>
-                  <button onClick={() => applyPreset('aggressive')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23]">
-                    Fast Cut (Aggressive)
-                  </button>
-                  <button onClick={() => applyPreset('podcast')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23] col-span-2">
-                    Podcast Smoothing
-                  </button>
-                </div>
-              </div>
 
-              {/* Threshold Control */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm font-semibold text-[--text-muted]">Sensitivity (%)</label>
-                  <span className="font-mono text-sm text-[--accent-cyan]">{thresholdPercent}% ({thresholdDB} dB)</span>
-                </div>
-                <input 
-                  type="range" min="0" max="100" step="1"
-                  value={thresholdPercent} onChange={(e) => handlePercentChange(parseInt(e.target.value))}
-                  className="tactile-slider"
-                />
-                <p className="text-xs text-[--text-muted] mt-2">Percentage threshold. Higher = cuts more audio.</p>
-              </div>
+                <div className="space-y-6 flex-1">
+                  
+                  {/* Smart Actions */}
+                  <div className="parameter-group space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[--text-main]">
+                      <span className="text-[--accent-pink]"><Icons.Sparkles /></span> Smart Presets
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => applyPreset('natural')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">
+                        Auto-Detect (Natural)
+                      </button>
+                      <button onClick={() => applyPreset('aggressive')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">
+                        Fast Cut (Aggressive)
+                      </button>
+                      <button onClick={() => applyPreset('podcast')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface] col-span-2">
+                        Podcast Smoothing
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Min Silence Duration */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm font-semibold text-[--text-muted]">Min Duration</label>
-                      <span className="font-mono text-sm text-[--accent-cyan]">{minSilenceMs} ms</span>
+                  {/* Threshold Control */}
+                  <div className="parameter-group">
+                    <div className="flex justify-between mb-3">
+                      <label className="text-sm font-semibold text-[--text-main]">Sensitivity (%)</label>
+                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{thresholdPercent}% <span className="text-[--text-muted] text-xs font-normal">({thresholdDB} dB)</span></span>
+                    </div>
+                    <input 
+                      type="range" min="0" max="100" step="1"
+                      value={thresholdPercent} onChange={(e) => handlePercentChange(parseInt(e.target.value))}
+                      className="tactile-slider"
+                    />
+                    <p className="text-xs text-[--text-muted] mt-3 font-medium">Higher percentage removes more audio.</p>
+                  </div>
+
+                  {/* Min Silence Duration */}
+                  <div className="parameter-group">
+                    <div className="flex justify-between mb-3">
+                      <label className="text-sm font-semibold text-[--text-main]">Min Duration</label>
+                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{minSilenceMs} ms</span>
                     </div>
                     <input 
                       type="range" min="50" max="2000" step="50"
                       value={minSilenceMs} onChange={(e) => setMinSilenceMs(parseInt(e.target.value))}
                       className="tactile-slider"
                     />
-                    <p className="text-xs text-[--text-muted] mt-2">How long silence must last to be cut.</p>
+                    <p className="text-xs text-[--text-muted] mt-3 font-medium">How long silence must last to be cut.</p>
                   </div>
 
                   {/* Padding Control */}
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <label className="text-sm font-semibold text-[--text-muted]">Padding (Edges)</label>
-                      <span className="font-mono text-sm text-[--accent-cyan]">{paddingMs} ms</span>
+                  <div className="parameter-group">
+                    <div className="flex justify-between mb-3">
+                      <label className="text-sm font-semibold text-[--text-main]">Edge Padding</label>
+                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{paddingMs} ms</span>
                     </div>
                     <input 
                       type="range" min="0" max="500" step="10"
                       value={paddingMs} onChange={(e) => setPaddingMs(parseInt(e.target.value))}
                       className="tactile-slider"
                     />
-                    <p className="text-xs text-[--text-muted] mt-2">Audio preserved around cuts to sound natural.</p>
+                    <p className="text-xs text-[--text-muted] mt-3 font-medium">Audio preserved around cuts for natural speech.</p>
                   </div>
 
                 </div>
 
                 {/* Actions */}
-                <div className="pt-8 mt-auto space-y-4">
+                <div className="pt-8 mt-auto space-y-5">
                   <button 
-                    className="tactile-btn primary w-full !py-4 text-lg"
+                    className="tactile-btn primary w-full !py-4 text-base font-bold tracking-wide"
                     onClick={processAudio}
                     disabled={!originalBuffer || isProcessing}
                   >
                     {isProcessing ? (
-                      <span className="flex items-center gap-2">
-                         <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      <span className="flex items-center gap-3">
+                         <div className="w-5 h-5 border-2 border-[--bg-base] border-t-transparent rounded-full animate-spin"></div>
                          Processing {progress}%
                       </span>
                     ) : (
@@ -967,25 +1011,25 @@ export default function AudioProcessor() {
                     )}
                   </button>
 
-                  <div className="pt-4 border-t border-[--shadow-light] space-y-3">
-                    <label className="block text-xs font-semibold text-[--text-muted] uppercase tracking-wider">
+                  <div className="pt-5 border-t border-[--border-glass] space-y-4">
+                    <label className="block text-xs font-bold text-[--text-muted] uppercase tracking-wider">
                       Export Settings
                     </label>
                     <input 
                       type="text" 
-                      className="tactile-input text-sm" 
+                      className="tactile-input" 
                       placeholder={fileName ? `processed_${fileName.replace(/\.[^/.]+$/, "")}` : "Custom file name..."}
                       value={customFileName}
                       onChange={(e) => setCustomFileName(e.target.value)}
                       disabled={!processedBuffer}
                     />
                     <button 
-                      className="tactile-btn w-full"
+                      className="tactile-btn w-full !py-3 font-semibold"
                       onClick={handleDownload}
                       disabled={!processedBuffer || isProcessing}
                     >
                       <Icons.Download />
-                      Export WAV
+                      Export WAV File
                     </button>
                   </div>
                 </div>

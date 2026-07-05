@@ -1,0 +1,1002 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+const tactileStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg-base: #1a1c23;
+    --panel-surface: #22252d;
+    --shadow-light: #2d313c;
+    --shadow-dark: #111318;
+    --accent-cyan: #00e5ff;
+    --accent-pink: #ff2a6d;
+    --text-main: #e2e8f0;
+    --text-muted: #828c9a;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* 3D Tactile Panel */
+  .tactile-panel {
+    background: var(--panel-surface);
+    border-radius: 24px;
+    box-shadow: 
+      12px 12px 24px var(--shadow-dark),
+      -12px -12px 24px var(--shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+
+  /* 3D Tactile Inset (for screens, tracks) */
+  .tactile-inset {
+    background: var(--bg-base);
+    border-radius: 16px;
+    box-shadow: 
+      inset 8px 8px 16px var(--shadow-dark),
+      inset -8px -8px 16px var(--shadow-light);
+  }
+
+  /* 3D Tactile Button */
+  .tactile-btn {
+    background: linear-gradient(145deg, #252830, #1e2129);
+    border-radius: 12px;
+    color: var(--text-main);
+    font-weight: 600;
+    border: none;
+    box-shadow: 
+      6px 6px 12px var(--shadow-dark),
+      -6px -6px 12px var(--shadow-light);
+    transition: all 0.15s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+  }
+
+  .tactile-btn:hover {
+    color: var(--accent-cyan);
+  }
+
+  .tactile-btn:active {
+    background: var(--panel-surface);
+    box-shadow: 
+      inset 6px 6px 12px var(--shadow-dark),
+      inset -6px -6px 12px var(--shadow-light);
+    color: var(--accent-cyan);
+  }
+
+  .tactile-btn.primary {
+    background: linear-gradient(145deg, #00b3cc, #00e5ff);
+    color: #000;
+    box-shadow: 
+      6px 6px 16px rgba(0, 229, 255, 0.2),
+      -6px -6px 16px var(--shadow-light);
+  }
+
+  .tactile-btn.primary:active {
+    box-shadow: 
+      inset 6px 6px 12px rgba(0, 150, 180, 0.5),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.3);
+  }
+
+  .tactile-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* 3D Slider */
+  .tactile-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 12px;
+    background: var(--bg-base);
+    border-radius: 6px;
+    outline: none;
+    box-shadow: 
+      inset 3px 3px 6px var(--shadow-dark),
+      inset -3px -3px 6px var(--shadow-light);
+  }
+
+  .tactile-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #3a3f4c, #1a1c23);
+    cursor: pointer;
+    box-shadow: 
+      4px 4px 8px var(--shadow-dark),
+      -4px -4px 8px var(--shadow-light),
+      inset 2px 2px 4px rgba(255,255,255,0.1);
+    border: 2px solid var(--accent-cyan);
+    transition: transform 0.1s;
+  }
+
+  .tactile-slider::-webkit-slider-thumb:active {
+    transform: scale(0.95);
+    background: var(--accent-cyan);
+    box-shadow: 0 0 15px var(--accent-cyan);
+  }
+
+  /* 3D Tactile Input */
+  .tactile-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-base);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    box-shadow: 
+      inset 3px 3px 6px var(--shadow-dark),
+      inset -3px -3px 6px var(--shadow-light);
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .tactile-input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 
+      inset 3px 3px 6px var(--shadow-dark),
+      inset -3px -3px 6px var(--shadow-light),
+      0 0 8px rgba(0, 229, 255, 0.2);
+  }
+
+  .tactile-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Canvas styling */
+  canvas {
+    width: 100%;
+    height: 120px;
+    display: block;
+    border-radius: 12px;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+`;
+
+const Icons = {
+  Upload: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+  Play: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  Pause: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
+  Download: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  Scissors: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>,
+  Settings: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Reset: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+  Sparkles: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+};
+
+// Utility to convert AudioBuffer to WAV format for downloading
+const audioBufferToWav = (buffer) => {
+  let numOfChan = buffer.numberOfChannels,
+      length = buffer.length * numOfChan * 2 + 44,
+      bufferArray = new ArrayBuffer(length),
+      view = new DataView(bufferArray),
+      channels = [], i, sample,
+      offset = 0,
+      pos = 0;
+
+  function setString(data) {
+    for (let i = 0; i < data.length; i++) {
+      view.setUint8(pos++, data.charCodeAt(i));
+    }
+  }
+
+  setString('RIFF');
+  view.setUint32(pos, length - 8, true); pos += 4;
+  setString('WAVE');
+  setString('fmt ');
+  view.setUint32(pos, 16, true); pos += 4;
+  view.setUint16(pos, 1, true); pos += 2;
+  view.setUint16(pos, numOfChan, true); pos += 2;
+  view.setUint32(pos, buffer.sampleRate, true); pos += 4;
+  view.setUint32(pos, buffer.sampleRate * 2 * numOfChan, true); pos += 4;
+  view.setUint16(pos, numOfChan * 2, true); pos += 2;
+  view.setUint16(pos, 16, true); pos += 2;
+  setString('data');
+  view.setUint32(pos, length - pos - 4, true); pos += 4;
+
+  for (i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while(pos < length) {
+    for (i = 0; i < numOfChan; i++) {
+      sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
+      view.setInt16(pos, sample, true); pos += 2;
+    }
+    offset++;
+  }
+  return new Blob([bufferArray], {type: "audio/wav"});
+};
+
+const formatTime = (seconds) => {
+  if (isNaN(seconds)) return "00:00";
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
+  return `${m}:${s}.${ms}`;
+};
+
+// Global AudioContext to prevent React strict mode duplication and ensure it stays unlocked
+let sharedAudioCtx = null;
+const getSharedAudioContext = () => {
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+};
+
+export default function AudioProcessor() {
+  // Audio state
+  const [originalBuffer, setOriginalBuffer] = useState(null);
+  const [processedBuffer, setProcessedBuffer] = useState(null);
+  const [fileName, setFileName] = useState("");
+  const [customFileName, setCustomFileName] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Parameters State
+  const [thresholdDB, setThresholdDB] = useState(-45); // dB
+  const [thresholdPercent, setThresholdPercent] = useState(43); // 0-100%
+  const [minSilenceMs, setMinSilenceMs] = useState(300); // ms
+  const [paddingMs, setPaddingMs] = useState(50); // ms
+
+  // Playback state
+  const [isPlayingOrig, setIsPlayingOrig] = useState(false);
+  const [isPlayingProc, setIsPlayingProc] = useState(false);
+  const sourceNodeRef = useRef(null);
+  const startTimeRef = useRef(0);
+  const pausedAtRef = useRef(0); // Tracks exactly where playback paused
+  const activeTrackRef = useRef(null); // 'orig' or 'proc'
+  const animationRef = useRef(null);
+  const [playbackPosOrig, setPlaybackPosOrig] = useState(0);
+  const [playbackPosProc, setPlaybackPosProc] = useState(0);
+
+  // Refs for canvases
+  const origCanvasRef = useRef(null);
+  const procCanvasRef = useRef(null);
+
+  // Bulletproof Web Audio Unlocking for strict browsers (Safari/iOS)
+  useEffect(() => {
+    const unlockAudio = () => {
+      const ctx = getSharedAudioContext();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
+  // Sync threshold percentage and dB
+  const handlePercentChange = (percent) => {
+    setThresholdPercent(percent);
+    // Maps 0% (-80dB) to 100% (0dB) dynamically
+    const db = -80 + (percent / 100) * 80;
+    setThresholdDB(Math.round(db));
+  };
+
+  const handleDBChange = (db) => {
+    setThresholdDB(db);
+    const percent = ((db + 80) / 80) * 100;
+    setThresholdPercent(Math.round(percent));
+  };
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    
+    // Grabs active context, ensuring browser unlocks audio processing
+    const ctx = getSharedAudioContext();
+    
+    setFileName(file.name);
+    setCustomFileName("");
+    setProcessedBuffer(null);
+    setPlaybackPosOrig(0);
+    setPlaybackPosProc(0);
+    pausedAtRef.current = 0;
+    activeTrackRef.current = null;
+    stopPlayback();
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const arrayBuffer = event.target.result;
+        const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+        setOriginalBuffer(decodedBuffer);
+        
+        // Intelligently scan and adapt to the incoming file's noise floor
+        runSmartAnalysis(decodedBuffer);
+      } catch (err) {
+        alert("Error decoding audio file. Ensure it's a valid audio format.");
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const runSmartAnalysis = (buffer) => {
+    // Fast analysis finding background hum/noise
+    const data = buffer.getChannelData(0);
+    let peaks = [];
+    const step = Math.floor(buffer.sampleRate * 0.05); // Scan in 50ms chunks
+    
+    for (let i = 0; i < data.length; i += step) {
+      let chunkSumSq = 0;
+      for (let j = 0; j < step && i + j < data.length; j++) {
+        chunkSumSq += data[i + j] * data[i + j];
+      }
+      const rms = Math.sqrt(chunkSumSq / step);
+      if (rms > 0) peaks.push(rms);
+    }
+    
+    if (peaks.length === 0) return;
+    
+    peaks.sort((a, b) => a - b);
+    const noiseFloorRMS = peaks[Math.floor(peaks.length * 0.1)] || 0.001; // Take the 10th percentile
+    
+    // Convert mathematical RMS to Decibels
+    const noiseFloorDB = 20 * Math.log10(noiseFloorRMS);
+    // Suggest a threshold resting slightly above ambient background noise
+    const suggestedDB = Math.min(-10, Math.max(-70, Math.round(noiseFloorDB + 6))); 
+    
+    handleDBChange(suggestedDB);
+    setMinSilenceMs(300);
+    setPaddingMs(100);
+  };
+
+  const applyPreset = (type) => {
+    if (!originalBuffer) return;
+    if (type === 'aggressive') {
+      handleDBChange(thresholdDB + 5 > -10 ? -10 : thresholdDB + 5);
+      setMinSilenceMs(100);
+      setPaddingMs(20);
+    } else if (type === 'natural') {
+      runSmartAnalysis(originalBuffer);
+    } else if (type === 'podcast') {
+      handleDBChange(thresholdDB); // Keep current threshold logic
+      setMinSilenceMs(500); // Generous pause allowances
+      setPaddingMs(150); // Generous breath padding
+    }
+  };
+
+  const resetAll = () => {
+    stopPlayback();
+    setOriginalBuffer(null);
+    setProcessedBuffer(null);
+    setFileName("");
+    setCustomFileName("");
+    setPlaybackPosOrig(0);
+    setPlaybackPosProc(0);
+    pausedAtRef.current = 0;
+    handlePercentChange(43);
+  };
+
+  const drawWaveform = useCallback((canvas, buffer, cursorRatio, isProcessed = false) => {
+    if (!canvas || !buffer) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    ctx.clearRect(0, 0, width, height);
+
+    const data = buffer.getChannelData(0);
+    const step = Math.ceil(data.length / width);
+    const amp = height / 2;
+    
+    // Draw grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.beginPath();
+    for(let i=0; i<width; i+=50) { ctx.moveTo(i, 0); ctx.lineTo(i, height); }
+    ctx.moveTo(0, amp); ctx.lineTo(width, amp);
+    ctx.stroke();
+
+    // Draw waveform
+    ctx.beginPath();
+    ctx.moveTo(0, amp);
+    
+    for (let i = 0; i < width; i++) {
+      let min = 1.0;
+      let max = -1.0;
+      const offset = i * step;
+      for (let j = 0; j < step && offset + j < data.length; j++) {
+        const datum = data[offset + j];
+        if (datum < min) min = datum;
+        if (datum > max) max = datum;
+      }
+      ctx.lineTo(i, (1 + min) * amp);
+      ctx.lineTo(i, (1 + max) * amp);
+    }
+    
+    // Styling the wave
+    ctx.strokeStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Draw playback cursor
+    if (cursorRatio > 0 && cursorRatio <= 1) {
+      const cursorX = cursorRatio * width;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(cursorX - 1, 0, 2, height);
+      ctx.fillStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
+      ctx.beginPath();
+      ctx.arc(cursorX, 10, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, []);
+
+  // Update canvas when buffers change
+  useEffect(() => {
+    if (origCanvasRef.current && originalBuffer) {
+      // Fix resolution for high DPI displays
+      const dpr = window.devicePixelRatio || 1;
+      origCanvasRef.current.width = origCanvasRef.current.offsetWidth * dpr;
+      origCanvasRef.current.height = origCanvasRef.current.offsetHeight * dpr;
+      drawWaveform(origCanvasRef.current, originalBuffer, playbackPosOrig, false);
+    }
+  }, [originalBuffer, playbackPosOrig, drawWaveform]);
+
+  useEffect(() => {
+    if (procCanvasRef.current && processedBuffer) {
+      const dpr = window.devicePixelRatio || 1;
+      procCanvasRef.current.width = procCanvasRef.current.offsetWidth * dpr;
+      procCanvasRef.current.height = procCanvasRef.current.offsetHeight * dpr;
+      drawWaveform(procCanvasRef.current, processedBuffer, playbackPosProc, true);
+    }
+  }, [processedBuffer, playbackPosProc, drawWaveform]);
+
+  const processAudio = async () => {
+    if (!originalBuffer) return;
+    const ctx = getSharedAudioContext();
+    setIsProcessing(true);
+    setProgress(0);
+    stopPlayback();
+    pausedAtRef.current = 0;
+
+    // Yield to let React render the loading state
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+      const sr = originalBuffer.sampleRate;
+      const numChannels = originalBuffer.numberOfChannels;
+      const thresholdMag = Math.pow(10, thresholdDB / 20); // dB to linear
+      
+      const windowSizeSamples = Math.floor(sr * 0.01); // 10ms window
+      const minSilenceSamples = Math.floor(sr * (minSilenceMs / 1000));
+      const paddingSamples = Math.floor(sr * (paddingMs / 1000));
+      
+      const channelData = originalBuffer.getChannelData(0); // Analyze mono mix/channel 0
+      const totalSamples = channelData.length;
+      
+      // 1. Compute RMS for windows and identify silent windows
+      const numWindows = Math.floor(totalSamples / windowSizeSamples);
+      const isSilentWindow = new Array(numWindows).fill(false);
+      
+      for (let i = 0; i < numWindows; i++) {
+        let sumSq = 0;
+        const start = i * windowSizeSamples;
+        for (let j = 0; j < windowSizeSamples; j++) {
+          const sample = channelData[start + j];
+          sumSq += sample * sample;
+        }
+        const rms = Math.sqrt(sumSq / windowSizeSamples);
+        if (rms < thresholdMag) {
+          isSilentWindow[i] = true;
+        }
+      }
+
+      setProgress(30);
+      await new Promise(r => setTimeout(r, 10)); // UI yield
+
+      // 2. Find continuous silent blocks and map to samples
+      let silentRegions = [];
+      let currentSilenceStart = -1;
+
+      for (let i = 0; i < numWindows; i++) {
+        if (isSilentWindow[i]) {
+          if (currentSilenceStart === -1) currentSilenceStart = i;
+        } else {
+          if (currentSilenceStart !== -1) {
+            const lengthWindows = i - currentSilenceStart;
+            const lengthSamples = lengthWindows * windowSizeSamples;
+            if (lengthSamples >= minSilenceSamples) {
+              silentRegions.push({
+                start: currentSilenceStart * windowSizeSamples,
+                end: i * windowSizeSamples
+              });
+            }
+            currentSilenceStart = -1;
+          }
+        }
+      }
+      // Handle trailing silence
+      if (currentSilenceStart !== -1) {
+        const lengthWindows = numWindows - currentSilenceStart;
+        if (lengthWindows * windowSizeSamples >= minSilenceSamples) {
+           silentRegions.push({
+            start: currentSilenceStart * windowSizeSamples,
+            end: totalSamples
+          });
+        }
+      }
+
+      setProgress(60);
+      await new Promise(r => setTimeout(r, 10));
+
+      // 3. Invert to keepRegions and apply padding
+      let keepRegions = [];
+      let lastEnd = 0;
+      
+      for (const silence of silentRegions) {
+        if (silence.start > lastEnd) {
+          keepRegions.push({
+            start: Math.max(0, lastEnd - paddingSamples),
+            end: Math.min(totalSamples, silence.start + paddingSamples)
+          });
+        }
+        lastEnd = silence.end;
+      }
+      // Trailing keep
+      if (lastEnd < totalSamples) {
+        keepRegions.push({
+          start: Math.max(0, lastEnd - paddingSamples),
+          end: totalSamples
+        });
+      }
+
+      // If no silences found
+      if (silentRegions.length === 0) {
+        keepRegions = [{start: 0, end: totalSamples}];
+      }
+
+      // 4. Merge overlapping keepRegions
+      let mergedKeepRegions = [];
+      if (keepRegions.length > 0) {
+        mergedKeepRegions.push(keepRegions[0]);
+        for (let i = 1; i < keepRegions.length; i++) {
+          const current = keepRegions[i];
+          const lastMerged = mergedKeepRegions[mergedKeepRegions.length - 1];
+          if (current.start <= lastMerged.end) {
+            lastMerged.end = Math.max(lastMerged.end, current.end);
+          } else {
+            mergedKeepRegions.push(current);
+          }
+        }
+      }
+
+      setProgress(80);
+      await new Promise(r => setTimeout(r, 10));
+
+      // 5. Construct new AudioBuffer
+      const totalNewLength = mergedKeepRegions.reduce((acc, reg) => acc + (reg.end - reg.start), 0);
+      
+      if (totalNewLength === 0) {
+        alert("Parameters removed entire audio track!");
+        setIsProcessing(false);
+        return;
+      }
+
+      const newBuffer = ctx.createBuffer(numChannels, totalNewLength, sr);
+      
+      // Copy data with micro-crossfading to avoid clicks
+      const FADE_SAMPLES = Math.min(240, Math.floor(sr * 0.005)); // 5ms fade
+      
+      for (let c = 0; c < numChannels; c++) {
+        const srcData = originalBuffer.getChannelData(c);
+        const dstData = newBuffer.getChannelData(c);
+        let dstOffset = 0;
+
+        for (const reg of mergedKeepRegions) {
+          const len = reg.end - reg.start;
+          const actualFade = Math.min(FADE_SAMPLES, Math.floor(len / 2));
+          for (let i = 0; i < len; i++) {
+            let sample = srcData[reg.start + i];
+            // Fade In
+            if (i < actualFade) {
+              sample *= (i / actualFade);
+            } 
+            // Fade Out
+            else if (i > len - actualFade) {
+              sample *= ((len - i) / actualFade);
+            }
+            dstData[dstOffset + i] = sample;
+          }
+          dstOffset += len;
+        }
+      }
+
+      setProgress(100);
+      setProcessedBuffer(newBuffer);
+      setPlaybackPosProc(0);
+      
+    } catch (e) {
+      console.error(e);
+      alert("Error processing audio.");
+    } finally {
+      setIsProcessing(false);
+      setProgress(0);
+    }
+  };
+
+  const stopPlayback = () => {
+    if (sourceNodeRef.current) {
+      try { sourceNodeRef.current.stop(); } catch(e){}
+      try { sourceNodeRef.current.disconnect(); } catch(e){}
+      sourceNodeRef.current = null;
+    }
+    cancelAnimationFrame(animationRef.current);
+    setIsPlayingOrig(false);
+    setIsPlayingProc(false);
+  };
+
+  const togglePlay = async (isOriginal) => {
+    const ctx = getSharedAudioContext();
+    const buffer = isOriginal ? originalBuffer : processedBuffer;
+    if (!buffer) return;
+    
+    const currentlyPlaying = isOriginal ? isPlayingOrig : isPlayingProc;
+    const trackType = isOriginal ? 'orig' : 'proc';
+
+    if (currentlyPlaying) {
+      // Pause logic: Store exact time for seamless resumption
+      const elapsed = ctx.currentTime - startTimeRef.current;
+      pausedAtRef.current += elapsed;
+      stopPlayback();
+      return;
+    }
+
+    // Reset loop if switching tracks entirely
+    if (activeTrackRef.current !== trackType) {
+       pausedAtRef.current = 0;
+       activeTrackRef.current = trackType;
+    }
+    
+    stopPlayback();
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    
+    // Added GainNode to prevent clipping/connection issues on some setups
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 1.0;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    const duration = buffer.duration;
+    
+    // Cycle back to beginning if hitting play at the end of the file
+    if (pausedAtRef.current >= duration) {
+       pausedAtRef.current = 0;
+    }
+
+    source.start(0, pausedAtRef.current);
+    sourceNodeRef.current = source;
+    startTimeRef.current = ctx.currentTime;
+    
+    if (isOriginal) setIsPlayingOrig(true);
+    else setIsPlayingProc(true);
+
+    const updateCursor = () => {
+      if (!sourceNodeRef.current) return;
+      const elapsed = (ctx.currentTime - startTimeRef.current) + pausedAtRef.current;
+      const ratio = elapsed / duration;
+      
+      if (ratio >= 1.0) {
+        stopPlayback();
+        pausedAtRef.current = 0;
+        if (isOriginal) setPlaybackPosOrig(0);
+        else setPlaybackPosProc(0);
+      } else {
+        if (isOriginal) setPlaybackPosOrig(ratio);
+        else setPlaybackPosProc(ratio);
+        animationRef.current = requestAnimationFrame(updateCursor);
+      }
+    };
+    animationRef.current = requestAnimationFrame(updateCursor);
+  };
+
+  const handleDownload = () => {
+    if (!processedBuffer) return;
+    const wavBlob = audioBufferToWav(processedBuffer);
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    
+    let downloadName = "";
+    if (customFileName.trim() !== "") {
+      downloadName = customFileName.trim();
+      if (!downloadName.toLowerCase().endsWith('.wav')) {
+         downloadName += '.wav';
+      }
+    } else {
+       downloadName = `processed_${fileName.replace(/\.[^/.]+$/, "")}.wav`;
+    }
+    
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  return (
+    <>
+      <style>{tactileStyles}</style>
+      <div className="min-h-screen p-6 flex flex-col items-center justify-center">
+        
+        <div className="w-full max-w-4xl space-y-8">
+          
+          {/* Header */}
+          <div className="text-center mb-10 relative">
+            <button 
+              onClick={resetAll}
+              className="absolute right-0 top-0 tactile-btn !px-4 !py-2 text-sm flex items-center gap-2 hover:!text-[--accent-pink]"
+              title="Reset Workspace"
+            >
+              <Icons.Reset />
+              Reset
+            </button>
+            <h1 className="text-4xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-[--accent-cyan] to-[--accent-pink]">
+              Smart Silence Remover
+            </h1>
+            <p className="text-[--text-muted]">Advanced DSP Audio Processor with 3D Tactile UI</p>
+          </div>
+
+          {/* Main Workspace Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Left Column: Waveforms & Upload */}
+            <div className="lg:col-span-8 space-y-6">
+              
+              {/* Upload Zone */}
+              <div 
+                className={`tactile-panel p-8 flex flex-col items-center justify-center gap-4 transition-all duration-200 border-2 border-dashed ${
+                  isDragging 
+                    ? 'border-[--accent-cyan] bg-[#1d2027] shadow-[0_0_20px_rgba(0,229,255,0.15)] scale-[1.02]' 
+                    : 'border-transparent hover:border-[rgba(255,255,255,0.1)]'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const ctx = getSharedAudioContext();
+                  if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0]);
+                  }
+                }}
+              >
+                <div className={`p-4 rounded-full transition-colors ${isDragging ? 'bg-[--accent-cyan] text-black' : 'bg-[--bg-base] text-[--text-muted]'}`}>
+                  <Icons.Upload />
+                </div>
+                <div className="text-center">
+                  <h3 className="font-semibold text-xl mb-1">
+                    {isDragging ? 'Drop it here!' : 'Upload Source Audio'}
+                  </h3>
+                  <p className="text-sm text-[--text-muted] mb-5">
+                    {fileName ? `Loaded: ${fileName}` : "Drag & drop an audio file here, or click to browse"}
+                  </p>
+                  <label className="tactile-btn cursor-pointer inline-flex">
+                    <span>Browse Files</span>
+                    <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+                  </label>
+                </div>
+              </div>
+
+              {/* Original Waveform */}
+              <div className={`tactile-panel p-6 transition-opacity ${!originalBuffer ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      className="tactile-btn !p-2 !rounded-full"
+                      onClick={() => togglePlay(true)}
+                    >
+                      {isPlayingOrig ? <Icons.Pause /> : <Icons.Play />}
+                    </button>
+                    <span className="font-mono text-sm">
+                      {originalBuffer ? formatTime(playbackPosOrig * originalBuffer.duration) : "00:00.00"} 
+                      <span className="text-[--text-muted]"> / {originalBuffer ? formatTime(originalBuffer.duration) : "00:00.00"}</span>
+                    </span>
+                  </div>
+                  <span className="text-xs uppercase tracking-widest text-[--text-muted] font-bold">Original</span>
+                </div>
+                <div className="tactile-inset p-2 relative">
+                  <canvas ref={origCanvasRef} className="w-full h-24 bg-transparent"></canvas>
+                </div>
+              </div>
+
+              {/* Processed Waveform */}
+              <div className={`tactile-panel p-6 transition-opacity ${!processedBuffer ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      className="tactile-btn !p-2 !rounded-full"
+                      onClick={() => togglePlay(false)}
+                    >
+                      {isPlayingProc ? <Icons.Pause /> : <Icons.Play />}
+                    </button>
+                    <span className="font-mono text-sm">
+                      {processedBuffer ? formatTime(playbackPosProc * processedBuffer.duration) : "00:00.00"}
+                      <span className="text-[--text-muted]"> / {processedBuffer ? formatTime(processedBuffer.duration) : "00:00.00"}</span>
+                    </span>
+                  </div>
+                  <span className="text-xs uppercase tracking-widest text-[--accent-cyan] font-bold">Processed</span>
+                </div>
+                <div className="tactile-inset p-2 relative">
+                  <canvas ref={procCanvasRef} className="w-full h-24 bg-transparent"></canvas>
+                </div>
+                
+                {/* Stats Summary */}
+                {processedBuffer && originalBuffer && (
+                  <div className="mt-4 flex gap-4 text-sm bg-[--bg-base] p-3 rounded-xl border border-[--shadow-light]">
+                    <div className="flex-1 text-center border-r border-[--shadow-light]">
+                      <div className="text-[--text-muted] text-xs uppercase mb-1">Time Saved</div>
+                      <div className="font-mono text-[--accent-pink] font-bold">
+                        {formatTime(originalBuffer.duration - processedBuffer.duration)}
+                      </div>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <div className="text-[--text-muted] text-xs uppercase mb-1">Reduction</div>
+                      <div className="font-mono text-[--accent-cyan] font-bold">
+                        {Math.round((1 - (processedBuffer.duration / originalBuffer.duration)) * 100)}%
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Right Column: Controls */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              <div className="tactile-panel p-6 h-full flex flex-col">
+                <div className="flex items-center gap-2 mb-6 border-b border-[--shadow-light] pb-4">
+              <Icons.Settings />
+              <h3 className="font-bold text-xl">Parameters</h3>
+            </div>
+
+            <div className="space-y-8 flex-1">
+              
+              {/* Smart Actions */}
+              <div className="p-4 rounded-xl bg-[--bg-base] border border-[--shadow-light] space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-[--text-main]">
+                  <Icons.Sparkles /> Smart Controls
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => applyPreset('natural')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23]">
+                    Auto-Detect (Natural)
+                  </button>
+                  <button onClick={() => applyPreset('aggressive')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23]">
+                    Fast Cut (Aggressive)
+                  </button>
+                  <button onClick={() => applyPreset('podcast')} className="tactile-btn !p-2 text-xs !bg-[#1a1c23] col-span-2">
+                    Podcast Smoothing
+                  </button>
+                </div>
+              </div>
+
+              {/* Threshold Control */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <label className="text-sm font-semibold text-[--text-muted]">Sensitivity (%)</label>
+                  <span className="font-mono text-sm text-[--accent-cyan]">{thresholdPercent}% ({thresholdDB} dB)</span>
+                </div>
+                <input 
+                  type="range" min="0" max="100" step="1"
+                  value={thresholdPercent} onChange={(e) => handlePercentChange(parseInt(e.target.value))}
+                  className="tactile-slider"
+                />
+                <p className="text-xs text-[--text-muted] mt-2">Percentage threshold. Higher = cuts more audio.</p>
+              </div>
+
+              {/* Min Silence Duration */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <label className="text-sm font-semibold text-[--text-muted]">Min Duration</label>
+                      <span className="font-mono text-sm text-[--accent-cyan]">{minSilenceMs} ms</span>
+                    </div>
+                    <input 
+                      type="range" min="50" max="2000" step="50"
+                      value={minSilenceMs} onChange={(e) => setMinSilenceMs(parseInt(e.target.value))}
+                      className="tactile-slider"
+                    />
+                    <p className="text-xs text-[--text-muted] mt-2">How long silence must last to be cut.</p>
+                  </div>
+
+                  {/* Padding Control */}
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm font-semibold text-[--text-muted]">Padding (Edges)</label>
+                      <span className="font-mono text-sm text-[--accent-cyan]">{paddingMs} ms</span>
+                    </div>
+                    <input 
+                      type="range" min="0" max="500" step="10"
+                      value={paddingMs} onChange={(e) => setPaddingMs(parseInt(e.target.value))}
+                      className="tactile-slider"
+                    />
+                    <p className="text-xs text-[--text-muted] mt-2">Audio preserved around cuts to sound natural.</p>
+                  </div>
+
+                </div>
+
+                {/* Actions */}
+                <div className="pt-8 mt-auto space-y-4">
+                  <button 
+                    className="tactile-btn primary w-full !py-4 text-lg"
+                    onClick={processAudio}
+                    disabled={!originalBuffer || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <span className="flex items-center gap-2">
+                         <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                         Processing {progress}%
+                      </span>
+                    ) : (
+                      <>
+                        <Icons.Scissors />
+                        Remove Dead Space
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-4 border-t border-[--shadow-light] space-y-3">
+                    <label className="block text-xs font-semibold text-[--text-muted] uppercase tracking-wider">
+                      Export Settings
+                    </label>
+                    <input 
+                      type="text" 
+                      className="tactile-input text-sm" 
+                      placeholder={fileName ? `processed_${fileName.replace(/\.[^/.]+$/, "")}` : "Custom file name..."}
+                      value={customFileName}
+                      onChange={(e) => setCustomFileName(e.target.value)}
+                      disabled={!processedBuffer}
+                    />
+                    <button 
+                      className="tactile-btn w-full"
+                      onClick={handleDownload}
+                      disabled={!processedBuffer || isProcessing}
+                    >
+                      <Icons.Download />
+                      Export WAV
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

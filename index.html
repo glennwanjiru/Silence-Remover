@@ -1,1046 +1,1154 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Silence Remover</title>
+    <!-- Tailwind CSS for layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
-const tactileStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        :root {
+            --bg-base: #1c1e24;
+            --panel-surface: #21242b;
+            --shadow-light: #2c3039;
+            --shadow-dark: #16181d;
+            --accent-cyan: #00d4ff;
+            --accent-pink: #f83270;
+            --text-main: #f8fafc;
+            --text-muted: #8b95a5;
+            --border-glass: rgba(255, 255, 255, 0.04);
+        }
 
-  :root {
-    --bg-base: #1c1e24;
-    --panel-surface: #21242b;
-    --shadow-light: #2c3039;
-    --shadow-dark: #16181d;
-    --accent-cyan: #00d4ff;
-    --accent-pink: #f83270;
-    --text-main: #f8fafc;
-    --text-muted: #8b95a5;
-    --border-glass: rgba(255, 255, 255, 0.04);
-  }
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
 
-  body {
-    background-color: var(--bg-base);
-    color: var(--text-main);
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-  }
+        /* 3D Tactile Panel */
+        .tactile-panel {
+            background: var(--panel-surface);
+            border-radius: 20px;
+            box-shadow: 
+                10px 10px 20px var(--shadow-dark),
+                -10px -10px 20px var(--shadow-light);
+            border: 1px solid var(--border-glass);
+            transition: all 0.3s ease;
+        }
 
-  /* 3D Tactile Panel - Smoother, cleaner */
-  .tactile-panel {
-    background: var(--panel-surface);
-    border-radius: 20px;
-    box-shadow: 
-      10px 10px 20px var(--shadow-dark),
-      -10px -10px 20px var(--shadow-light);
-    border: 1px solid var(--border-glass);
-  }
+        /* 3D Tactile Inset */
+        .tactile-inset {
+            background: var(--bg-base);
+            border-radius: 12px;
+            box-shadow: 
+                inset 6px 6px 12px var(--shadow-dark),
+                inset -6px -6px 12px var(--shadow-light);
+            border: 1px solid rgba(0,0,0,0.2);
+        }
 
-  /* 3D Tactile Inset - For tracks/screens */
-  .tactile-inset {
-    background: var(--bg-base);
-    border-radius: 12px;
-    box-shadow: 
-      inset 6px 6px 12px var(--shadow-dark),
-      inset -6px -6px 12px var(--shadow-light);
-    border: 1px solid rgba(0,0,0,0.2);
-  }
+        /* 3D Tactile Button */
+        .tactile-btn {
+            background: var(--panel-surface);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 
+                5px 5px 10px var(--shadow-dark),
+                -5px -5px 10px var(--shadow-light);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            user-select: none;
+        }
 
-  /* 3D Tactile Button - More refined, better hover state */
-  .tactile-btn {
-    background: var(--panel-surface);
-    border-radius: 10px;
-    color: var(--text-main);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    border: 1px solid var(--border-glass);
-    box-shadow: 
-      5px 5px 10px var(--shadow-dark),
-      -5px -5px 10px var(--shadow-light);
-    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 20px;
-  }
+        .tactile-btn:hover {
+            color: var(--accent-cyan);
+            box-shadow: 
+                7px 7px 14px var(--shadow-dark),
+                -7px -7px 14px var(--shadow-light);
+            transform: translateY(-1px);
+        }
 
-  .tactile-btn:hover {
-    color: var(--accent-cyan);
-    box-shadow: 
-      7px 7px 14px var(--shadow-dark),
-      -7px -7px 14px var(--shadow-light);
-    transform: translateY(-1px);
-  }
+        .tactile-btn:active {
+            background: var(--bg-base);
+            box-shadow: 
+                inset 5px 5px 10px var(--shadow-dark),
+                inset -5px -5px 10px var(--shadow-light);
+            transform: translateY(1px);
+            color: var(--accent-cyan);
+            border-color: transparent;
+        }
 
-  .tactile-btn:active {
-    background: var(--bg-base);
-    box-shadow: 
-      inset 5px 5px 10px var(--shadow-dark),
-      inset -5px -5px 10px var(--shadow-light);
-    transform: translateY(1px);
-    color: var(--accent-cyan);
-    border-color: transparent;
-  }
+        .tactile-btn.primary {
+            background: linear-gradient(135deg, #00b8e6, #00d4ff);
+            color: #002833;
+            border: none;
+            box-shadow: 
+                5px 5px 15px rgba(0, 212, 255, 0.25),
+                -5px -5px 15px var(--shadow-light);
+        }
+        
+        .tactile-btn.primary:hover {
+            box-shadow: 
+                8px 8px 20px rgba(0, 212, 255, 0.35),
+                -5px -5px 15px var(--shadow-light);
+        }
 
-  .tactile-btn.primary {
-    background: linear-gradient(135deg, #00b8e6, #00d4ff);
-    color: #002833;
-    border: none;
-    box-shadow: 
-      5px 5px 15px rgba(0, 212, 255, 0.25),
-      -5px -5px 15px var(--shadow-light);
-  }
-  
-  .tactile-btn.primary:hover {
-    box-shadow: 
-      8px 8px 20px rgba(0, 212, 255, 0.35),
-      -5px -5px 15px var(--shadow-light);
-  }
+        .tactile-btn.primary:active {
+            background: linear-gradient(135deg, #009ac2, #00b8e6);
+            box-shadow: 
+                inset 5px 5px 10px rgba(0, 40, 50, 0.5),
+                inset -5px -5px 10px rgba(255, 255, 255, 0.2);
+        }
 
-  .tactile-btn.primary:active {
-    background: linear-gradient(135deg, #009ac2, #00b8e6);
-    box-shadow: 
-      inset 5px 5px 10px rgba(0, 40, 50, 0.5),
-      inset -5px -5px 10px rgba(255, 255, 255, 0.2);
-  }
+        .tactile-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
 
-  .tactile-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
+        /* Clean 3D Slider */
+        .tactile-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: var(--bg-base);
+            border-radius: 8px;
+            outline: none;
+            box-shadow: 
+                inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+            border: 1px solid rgba(0,0,0,0.15);
+        }
 
-  /* Clean 3D Slider */
-  .tactile-slider {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 10px;
-    background: var(--bg-base);
-    border-radius: 8px;
-    outline: none;
-    box-shadow: 
-      inset 4px 4px 8px var(--shadow-dark),
-      inset -4px -4px 8px var(--shadow-light);
-    border: 1px solid rgba(0,0,0,0.15);
-  }
+        .tactile-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--panel-surface);
+            cursor: pointer;
+            box-shadow: 
+                3px 3px 6px var(--shadow-dark),
+                -3px -3px 6px var(--shadow-light),
+                inset 1px 1px 2px rgba(255,255,255,0.1);
+            border: 2px solid var(--accent-cyan);
+            transition: all 0.15s ease;
+        }
 
-  .tactile-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--panel-surface);
-    cursor: pointer;
-    box-shadow: 
-      3px 3px 6px var(--shadow-dark),
-      -3px -3px 6px var(--shadow-light),
-      inset 1px 1px 2px rgba(255,255,255,0.1);
-    border: 2px solid var(--accent-cyan);
-    transition: all 0.15s ease;
-  }
+        .tactile-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 
+                4px 4px 8px var(--shadow-dark),
+                -4px -4px 8px var(--shadow-light),
+                0 0 10px rgba(0, 212, 255, 0.4);
+        }
 
-  .tactile-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 
-      4px 4px 8px var(--shadow-dark),
-      -4px -4px 8px var(--shadow-light),
-      0 0 10px rgba(0, 212, 255, 0.4);
-  }
+        .tactile-slider::-webkit-slider-thumb:active {
+            transform: scale(0.95);
+            background: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
 
-  .tactile-slider::-webkit-slider-thumb:active {
-    transform: scale(0.95);
-    background: var(--accent-cyan);
-    box-shadow: 0 0 15px var(--accent-cyan);
-  }
+        /* Clean 3D Input */
+        .tactile-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: var(--bg-base);
+            border: 1px solid var(--border-glass);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            box-shadow: 
+                inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+            outline: none;
+            transition: all 0.2s ease;
+        }
 
-  /* Clean 3D Input */
-  .tactile-input {
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--bg-base);
-    border: 1px solid var(--border-glass);
-    border-radius: 10px;
-    padding: 12px 16px;
-    color: var(--text-main);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
-    box-shadow: 
-      inset 4px 4px 8px var(--shadow-dark),
-      inset -4px -4px 8px var(--shadow-light);
-    outline: none;
-    transition: all 0.2s ease;
-  }
+        .tactile-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 
+                inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light),
+                0 0 10px rgba(0, 212, 255, 0.15);
+        }
 
-  .tactile-input:focus {
-    border-color: var(--accent-cyan);
-    box-shadow: 
-      inset 4px 4px 8px var(--shadow-dark),
-      inset -4px -4px 8px var(--shadow-light),
-      0 0 10px rgba(0, 212, 255, 0.15);
-  }
+        .tactile-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 
-  .tactile-input:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+        /* Layout Helpers */
+        canvas {
+            width: 100%;
+            height: 120px;
+            display: block;
+            border-radius: 8px;
+        }
 
-  /* Layout Helpers */
-  canvas {
-    width: 100%;
-    height: 120px;
-    display: block;
-    border-radius: 8px;
-  }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .parameter-group {
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(28, 30, 36, 0.5);
+            border: 1px solid var(--border-glass);
+        }
 
-  .font-mono {
-    font-family: 'JetBrains Mono', monospace;
-  }
-  
-  .parameter-group {
-    padding: 16px;
-    border-radius: 14px;
-    background: rgba(28, 30, 36, 0.5);
-    border: 1px solid var(--border-glass);
-  }
-`;
+        /* Drag & Drop Utility */
+        .drag-over {
+            border-color: var(--accent-cyan) !important;
+            background-color: var(--bg-base) !important;
+            box-shadow: 0 0 30px rgba(0,212,255,0.15) !important;
+            transform: scale(1.02);
+        }
+        .drag-over .upload-icon {
+            background-color: var(--accent-cyan);
+            color: var(--bg-base);
+        }
 
-const Icons = {
-  Upload: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-  Play: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
-  Pause: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
-  Download: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-  Scissors: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>,
-  Settings: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-  Reset: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
-  Sparkles: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
-};
+        /* Spin Animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
 
-// Utility to convert AudioBuffer to WAV format for downloading
-const audioBufferToWav = (buffer) => {
-  let numOfChan = buffer.numberOfChannels,
-      length = buffer.length * numOfChan * 2 + 44,
-      bufferArray = new ArrayBuffer(length),
-      view = new DataView(bufferArray),
-      channels = [], i, sample,
-      offset = 0,
-      pos = 0;
+<div class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+    <div class="w-full max-w-6xl space-y-8">
+        
+        <!-- Header -->
+        <div class="text-center mb-12 relative flex flex-col items-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-[--text-main]">
+                Smart <span class="text-transparent bg-clip-text bg-gradient-to-r from-[--accent-cyan] to-[--accent-pink]">Silence Remover</span>
+            </h1>
+            <p class="text-[--text-muted] font-medium tracking-wide">Clean Audio Processor • 3D Tactile Engine</p>
+            
+            <button id="btn-reset" class="absolute right-0 top-0 tactile-btn !px-4 !py-2 text-sm text-[--text-muted] hover:!text-[--accent-pink]" title="Reset Workspace">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Reset
+            </button>
+        </div>
 
-  function setString(data) {
-    for (let i = 0; i < data.length; i++) {
-      view.setUint8(pos++, data.charCodeAt(i));
-    }
-  }
+        <!-- Main Workspace Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Waveforms & Upload -->
+            <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+                
+                <!-- Upload Zone -->
+                <div id="upload-zone" class="tactile-panel p-10 flex flex-col items-center justify-center gap-5 border-2 border-dashed border-[var(--border-glass)] hover:border-[rgba(255,255,255,0.1)] transition-all duration-300">
+                    <div class="upload-icon p-5 rounded-full transition-colors bg-[--bg-base] text-[--text-muted]">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="upload-title" class="font-bold text-xl mb-2 text-[--text-main]">Upload Source Audio</h3>
+                        <p id="upload-desc" class="text-sm text-[--text-muted] mb-6 max-w-xs mx-auto">Drag & drop an audio file here, or click to browse your device.</p>
+                        <label class="tactile-btn cursor-pointer inline-flex">
+                            <span>Browse Files</span>
+                            <input type="file" id="file-input" accept="audio/*" class="hidden" />
+                        </label>
+                    </div>
+                </div>
 
-  setString('RIFF');
-  view.setUint32(pos, length - 8, true); pos += 4;
-  setString('WAVE');
-  setString('fmt ');
-  view.setUint32(pos, 16, true); pos += 4;
-  view.setUint16(pos, 1, true); pos += 2;
-  view.setUint16(pos, numOfChan, true); pos += 2;
-  view.setUint32(pos, buffer.sampleRate, true); pos += 4;
-  view.setUint32(pos, buffer.sampleRate * 2 * numOfChan, true); pos += 4;
-  view.setUint16(pos, numOfChan * 2, true); pos += 2;
-  view.setUint16(pos, 16, true); pos += 2;
-  setString('data');
-  view.setUint32(pos, length - pos - 4, true); pos += 4;
+                <!-- Original Waveform -->
+                <div id="panel-orig" class="tactile-panel p-6 opacity-40 pointer-events-none">
+                    <div class="flex justify-between items-center mb-5">
+                        <div class="flex items-center gap-4">
+                            <button id="btn-play-orig" class="tactile-btn !p-3 !rounded-full">
+                                <!-- Play Icon -->
+                                <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                <!-- Pause Icon (Hidden initially) -->
+                                <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                            </button>
+                            <div class="flex flex-col">
+                                <span id="time-orig" class="font-mono text-[--text-main] font-medium tracking-wide">00:00.00</span>
+                                <span id="total-orig" class="font-mono text-xs text-[--text-muted]">Total: 00:00.00</span>
+                            </div>
+                        </div>
+                        <span class="text-xs uppercase tracking-widest text-[--text-muted] font-bold">Original</span>
+                    </div>
+                    <div class="tactile-inset p-2">
+                        <canvas id="canvas-orig" class="w-full bg-transparent"></canvas>
+                    </div>
+                </div>
 
-  for (i = 0; i < buffer.numberOfChannels; i++) {
-    channels.push(buffer.getChannelData(i));
-  }
+                <!-- Processed Waveform -->
+                <div id="panel-proc" class="tactile-panel p-6 opacity-40 pointer-events-none">
+                    <div class="flex justify-between items-center mb-5">
+                        <div class="flex items-center gap-4">
+                            <button id="btn-play-proc" class="tactile-btn !p-3 !rounded-full">
+                                <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                            </button>
+                            <div class="flex flex-col">
+                                <span id="time-proc" class="font-mono text-[--text-main] font-medium tracking-wide">00:00.00</span>
+                                <span id="total-proc" class="font-mono text-xs text-[--text-muted]">Total: 00:00.00</span>
+                            </div>
+                        </div>
+                        <span class="text-xs uppercase tracking-widest text-[--accent-cyan] font-bold">Processed</span>
+                    </div>
+                    <div class="tactile-inset p-2">
+                        <canvas id="canvas-proc" class="w-full bg-transparent"></canvas>
+                    </div>
+                    
+                    <!-- Stats Summary -->
+                    <div id="stats-summary" class="mt-5 hidden gap-4 text-sm bg-[--bg-base] p-4 rounded-xl border border-[--border-glass] shadow-inner">
+                        <div class="flex-1 text-center border-r border-[--border-glass]">
+                            <div class="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Time Saved</div>
+                            <div id="stat-time-saved" class="font-mono text-[--accent-pink] font-bold text-lg">00:00.00</div>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <div class="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Reduction</div>
+                            <div id="stat-reduction" class="font-mono text-[--accent-cyan] font-bold text-lg">0%</div>
+                        </div>
+                    </div>
+                </div>
 
-  while(pos < length) {
-    for (i = 0; i < numOfChan; i++) {
-      sample = Math.max(-1, Math.min(1, channels[i][offset]));
-      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
-      view.setInt16(pos, sample, true); pos += 2;
-    }
-    offset++;
-  }
-  return new Blob([bufferArray], {type: "audio/wav"});
-};
+            </div>
 
-const formatTime = (seconds) => {
-  if (isNaN(seconds)) return "00:00";
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-  const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
-  return `${m}:${s}.${ms}`;
-};
+            <!-- Right Column: Controls -->
+            <div class="lg:col-span-5 xl:col-span-4 space-y-6">
+                <div class="tactile-panel p-6 h-full flex flex-col">
+                    <div class="flex items-center gap-3 mb-6 pb-4 border-b border-[--border-glass]">
+                        <div class="text-[--accent-cyan]">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </div>
+                        <h3 class="font-bold text-xl text-[--text-main]">Parameters</h3>
+                    </div>
 
-// Global AudioContext to prevent React strict mode duplication and ensure it stays unlocked
-let sharedAudioCtx = null;
-const getSharedAudioContext = () => {
-  if (!sharedAudioCtx) {
-    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (sharedAudioCtx.state === 'suspended') {
-    sharedAudioCtx.resume().catch(() => {});
-  }
-  return sharedAudioCtx;
-};
+                    <div class="space-y-6 flex-1">
+                        <!-- Smart Actions -->
+                        <div class="parameter-group space-y-4">
+                            <div class="flex items-center gap-2 text-sm font-semibold text-[--text-main]">
+                                <span class="text-[--accent-pink]"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></span> Smart Presets
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="preset-natural" class="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">Auto-Detect</button>
+                                <button id="preset-fast" class="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">Fast Cut</button>
+                                <button id="preset-podcast" class="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface] col-span-2">Podcast Smoothing</button>
+                            </div>
+                        </div>
 
-export default function AudioProcessor() {
-  // Audio state
-  const [originalBuffer, setOriginalBuffer] = useState(null);
-  const [processedBuffer, setProcessedBuffer] = useState(null);
-  const [fileName, setFileName] = useState("");
-  const [customFileName, setCustomFileName] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+                        <!-- Threshold Control -->
+                        <div class="parameter-group">
+                            <div class="flex justify-between mb-3">
+                                <label class="text-sm font-semibold text-[--text-main]">Sensitivity (%)</label>
+                                <span class="font-mono text-sm text-[--accent-cyan] font-semibold"><span id="val-percent">43</span>% <span class="text-[--text-muted] text-xs font-normal">(<span id="val-db">-45</span> dB)</span></span>
+                            </div>
+                            <input type="range" id="slider-threshold" min="0" max="100" step="1" value="43" class="tactile-slider" />
+                            <p class="text-xs text-[--text-muted] mt-3 font-medium">Higher percentage removes more audio.</p>
+                        </div>
 
-  // Parameters State
-  const [thresholdDB, setThresholdDB] = useState(-45); // dB
-  const [thresholdPercent, setThresholdPercent] = useState(43); // 0-100%
-  const [minSilenceMs, setMinSilenceMs] = useState(300); // ms
-  const [paddingMs, setPaddingMs] = useState(50); // ms
+                        <!-- Min Silence Duration -->
+                        <div class="parameter-group">
+                            <div class="flex justify-between mb-3">
+                                <label class="text-sm font-semibold text-[--text-main]">Min Duration</label>
+                                <span class="font-mono text-sm text-[--accent-cyan] font-semibold"><span id="val-duration">300</span> ms</span>
+                            </div>
+                            <input type="range" id="slider-duration" min="50" max="2000" step="50" value="300" class="tactile-slider" />
+                            <p class="text-xs text-[--text-muted] mt-3 font-medium">How long silence must last to be cut.</p>
+                        </div>
 
-  // Playback state
-  const [isPlayingOrig, setIsPlayingOrig] = useState(false);
-  const [isPlayingProc, setIsPlayingProc] = useState(false);
-  const sourceNodeRef = useRef(null);
-  const startTimeRef = useRef(0);
-  const pausedAtRef = useRef(0); // Tracks exactly where playback paused
-  const activeTrackRef = useRef(null); // 'orig' or 'proc'
-  const animationRef = useRef(null);
-  const [playbackPosOrig, setPlaybackPosOrig] = useState(0);
-  const [playbackPosProc, setPlaybackPosProc] = useState(0);
+                        <!-- Padding Control -->
+                        <div class="parameter-group">
+                            <div class="flex justify-between mb-3">
+                                <label class="text-sm font-semibold text-[--text-main]">Edge Padding</label>
+                                <span class="font-mono text-sm text-[--accent-cyan] font-semibold"><span id="val-padding">50</span> ms</span>
+                            </div>
+                            <input type="range" id="slider-padding" min="0" max="500" step="10" value="50" class="tactile-slider" />
+                            <p class="text-xs text-[--text-muted] mt-3 font-medium">Audio preserved around cuts for natural speech.</p>
+                        </div>
+                    </div>
 
-  // Refs for canvases
-  const origCanvasRef = useRef(null);
-  const procCanvasRef = useRef(null);
+                    <!-- Actions -->
+                    <div class="pt-8 mt-auto space-y-5">
+                        <button id="btn-process" class="tactile-btn primary w-full !py-4 text-base font-bold tracking-wide" disabled>
+                            <svg class="mr-2 icon-scissors" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                            <div id="spinner-process" class="hidden mr-3 w-5 h-5 border-2 border-[--bg-base] border-t-transparent rounded-full animate-spin"></div>
+                            <span id="text-process">Remove Dead Space</span>
+                        </button>
 
-  // Bulletproof Web Audio Unlocking for strict browsers (Safari/iOS)
-  useEffect(() => {
+                        <div class="pt-5 border-t border-[--border-glass] space-y-4">
+                            <label class="block text-xs font-bold text-[--text-muted] uppercase tracking-wider">Export Settings</label>
+                            <input type="text" id="input-filename" class="tactile-input" placeholder="Custom file name..." disabled />
+                            <button id="btn-export" class="tactile-btn w-full !py-3 font-semibold" disabled>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Export WAV File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- State Variables ---
+    let originalBuffer = null;
+    let processedBuffer = null;
+    let fileName = "";
+    
+    // Parameters
+    let thresholdPercent = 43;
+    let thresholdDB = -45;
+    let minSilenceMs = 300;
+    let paddingMs = 50;
+
+    // Playback State
+    let isPlayingOrig = false;
+    let isPlayingProc = false;
+    let sourceNode = null;
+    let startTime = 0;
+    let pausedAt = 0;
+    let activeTrack = null; // 'orig' or 'proc'
+    let animationRef = null;
+    let playbackPosOrig = 0;
+    let playbackPosProc = 0;
+
+    // --- Audio Context Management ---
+    let sharedAudioCtx = null;
+    const getSharedAudioContext = () => {
+        if (!sharedAudioCtx) {
+            sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (sharedAudioCtx.state === 'suspended') {
+            sharedAudioCtx.resume().catch(() => {});
+        }
+        return sharedAudioCtx;
+    };
+
+    // Unlock Audio Context on first interaction
     const unlockAudio = () => {
-      const ctx = getSharedAudioContext();
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const ctx = getSharedAudioContext();
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     };
     window.addEventListener('click', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
-    return () => {
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
+
+    // --- Utilities ---
+    const formatTime = (seconds) => {
+        if (isNaN(seconds) || !isFinite(seconds)) return "00:00.00";
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
+        return `${m}:${s}.${ms}`;
     };
-  }, []);
 
-  // Sync threshold percentage and dB
-  const handlePercentChange = (percent) => {
-    setThresholdPercent(percent);
-    // Maps 0% (-80dB) to 100% (0dB) dynamically
-    const db = -80 + (percent / 100) * 80;
-    setThresholdDB(Math.round(db));
-  };
+    const audioBufferToWav = (buffer) => {
+        let numOfChan = buffer.numberOfChannels,
+            length = buffer.length * numOfChan * 2 + 44,
+            bufferArray = new ArrayBuffer(length),
+            view = new DataView(bufferArray),
+            channels = [], i, sample,
+            offset = 0,
+            pos = 0;
 
-  const handleDBChange = (db) => {
-    setThresholdDB(db);
-    const percent = ((db + 80) / 80) * 100;
-    setThresholdPercent(Math.round(percent));
-  };
+        function setString(data) {
+            for (let i = 0; i < data.length; i++) {
+                view.setUint8(pos++, data.charCodeAt(i));
+            }
+        }
 
-  const handleFile = async (file) => {
-    if (!file) return;
-    
-    // Grabs active context, ensuring browser unlocks audio processing
-    const ctx = getSharedAudioContext();
-    
-    setFileName(file.name);
-    setCustomFileName("");
-    setProcessedBuffer(null);
-    setPlaybackPosOrig(0);
-    setPlaybackPosProc(0);
-    pausedAtRef.current = 0;
-    activeTrackRef.current = null;
-    stopPlayback();
+        setString('RIFF');
+        view.setUint32(pos, length - 8, true); pos += 4;
+        setString('WAVE');
+        setString('fmt ');
+        view.setUint32(pos, 16, true); pos += 4;
+        view.setUint16(pos, 1, true); pos += 2;
+        view.setUint16(pos, numOfChan, true); pos += 2;
+        view.setUint32(pos, buffer.sampleRate, true); pos += 4;
+        view.setUint32(pos, buffer.sampleRate * 2 * numOfChan, true); pos += 4;
+        view.setUint16(pos, numOfChan * 2, true); pos += 2;
+        view.setUint16(pos, 16, true); pos += 2;
+        setString('data');
+        view.setUint32(pos, length - pos - 4, true); pos += 4;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const arrayBuffer = event.target.result;
-        const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
-        setOriginalBuffer(decodedBuffer);
+        for (i = 0; i < buffer.numberOfChannels; i++) {
+            channels.push(buffer.getChannelData(i));
+        }
+
+        while(pos < length) {
+            for (i = 0; i < numOfChan; i++) {
+                sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
+                view.setInt16(pos, sample, true); pos += 2;
+            }
+            offset++;
+        }
+        return new Blob([bufferArray], {type: "audio/wav"});
+    };
+
+    // --- DOM Elements ---
+    const elements = {
+        uploadZone: document.getElementById('upload-zone'),
+        fileInput: document.getElementById('file-input'),
+        uploadTitle: document.getElementById('upload-title'),
+        uploadDesc: document.getElementById('upload-desc'),
         
-        // Intelligently scan and adapt to the incoming file's noise floor
-        runSmartAnalysis(decodedBuffer);
-      } catch (err) {
-        alert("Error decoding audio file. Ensure it's a valid audio format.");
-        console.error(err);
-      }
+        panelOrig: document.getElementById('panel-orig'),
+        canvasOrig: document.getElementById('canvas-orig'),
+        btnPlayOrig: document.getElementById('btn-play-orig'),
+        timeOrig: document.getElementById('time-orig'),
+        totalOrig: document.getElementById('total-orig'),
+        
+        panelProc: document.getElementById('panel-proc'),
+        canvasProc: document.getElementById('canvas-proc'),
+        btnPlayProc: document.getElementById('btn-play-proc'),
+        timeProc: document.getElementById('time-proc'),
+        totalProc: document.getElementById('total-proc'),
+        statsSummary: document.getElementById('stats-summary'),
+        statTimeSaved: document.getElementById('stat-time-saved'),
+        statReduction: document.getElementById('stat-reduction'),
+        
+        sliderThreshold: document.getElementById('slider-threshold'),
+        valPercent: document.getElementById('val-percent'),
+        valDb: document.getElementById('val-db'),
+        
+        sliderDuration: document.getElementById('slider-duration'),
+        valDuration: document.getElementById('val-duration'),
+        
+        sliderPadding: document.getElementById('slider-padding'),
+        valPadding: document.getElementById('val-padding'),
+        
+        btnProcess: document.getElementById('btn-process'),
+        spinnerProcess: document.getElementById('spinner-process'),
+        textProcess: document.getElementById('text-process'),
+        iconScissors: document.querySelector('.icon-scissors'),
+        
+        inputFilename: document.getElementById('input-filename'),
+        btnExport: document.getElementById('btn-export'),
+        btnReset: document.getElementById('btn-reset'),
+        
+        presetNatural: document.getElementById('preset-natural'),
+        presetFast: document.getElementById('preset-fast'),
+        presetPodcast: document.getElementById('preset-podcast')
     };
-    reader.readAsArrayBuffer(file);
-  };
 
-  const runSmartAnalysis = (buffer) => {
-    // Fast analysis finding background hum/noise
-    const data = buffer.getChannelData(0);
-    let peaks = [];
-    const step = Math.floor(buffer.sampleRate * 0.05); // Scan in 50ms chunks
+    // --- STREAMING_CHUNK:Configuring Event Listeners and File Handling ---
     
-    for (let i = 0; i < data.length; i += step) {
-      let chunkSumSq = 0;
-      for (let j = 0; j < step && i + j < data.length; j++) {
-        chunkSumSq += data[i + j] * data[i + j];
-      }
-      const rms = Math.sqrt(chunkSumSq / step);
-      if (rms > 0) peaks.push(rms);
-    }
+    // Drag & Drop
+    elements.uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.uploadZone.classList.add('drag-over');
+        elements.uploadTitle.innerText = "Drop audio file here!";
+    });
     
-    if (peaks.length === 0) return;
+    elements.uploadZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        elements.uploadZone.classList.remove('drag-over');
+        elements.uploadTitle.innerText = "Upload Source Audio";
+    });
     
-    peaks.sort((a, b) => a - b);
-    const noiseFloorRMS = peaks[Math.floor(peaks.length * 0.1)] || 0.001; // Take the 10th percentile
-    
-    // Convert mathematical RMS to Decibels
-    const noiseFloorDB = 20 * Math.log10(noiseFloorRMS);
-    // Suggest a threshold resting slightly above ambient background noise
-    const suggestedDB = Math.min(-10, Math.max(-70, Math.round(noiseFloorDB + 6))); 
-    
-    handleDBChange(suggestedDB);
-    setMinSilenceMs(300);
-    setPaddingMs(100);
-  };
-
-  const applyPreset = (type) => {
-    if (!originalBuffer) return;
-    if (type === 'aggressive') {
-      handleDBChange(thresholdDB + 5 > -10 ? -10 : thresholdDB + 5);
-      setMinSilenceMs(100);
-      setPaddingMs(20);
-    } else if (type === 'natural') {
-      runSmartAnalysis(originalBuffer);
-    } else if (type === 'podcast') {
-      handleDBChange(thresholdDB); // Keep current threshold logic
-      setMinSilenceMs(500); // Generous pause allowances
-      setPaddingMs(150); // Generous breath padding
-    }
-  };
-
-  const resetAll = () => {
-    stopPlayback();
-    setOriginalBuffer(null);
-    setProcessedBuffer(null);
-    setFileName("");
-    setCustomFileName("");
-    setPlaybackPosOrig(0);
-    setPlaybackPosProc(0);
-    pausedAtRef.current = 0;
-    handlePercentChange(43);
-  };
-
-  const drawWaveform = useCallback((canvas, buffer, cursorRatio, isProcessed = false) => {
-    if (!canvas || !buffer) return;
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    ctx.clearRect(0, 0, width, height);
-
-    const data = buffer.getChannelData(0);
-    const step = Math.ceil(data.length / width);
-    const amp = height / 2;
-    
-    // Draw grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.beginPath();
-    for(let i=0; i<width; i+=50) { ctx.moveTo(i, 0); ctx.lineTo(i, height); }
-    ctx.moveTo(0, amp); ctx.lineTo(width, amp);
-    ctx.stroke();
-
-    // Draw waveform
-    ctx.beginPath();
-    ctx.moveTo(0, amp);
-    
-    for (let i = 0; i < width; i++) {
-      let min = 1.0;
-      let max = -1.0;
-      const offset = i * step;
-      for (let j = 0; j < step && offset + j < data.length; j++) {
-        const datum = data[offset + j];
-        if (datum < min) min = datum;
-        if (datum > max) max = datum;
-      }
-      ctx.lineTo(i, (1 + min) * amp);
-      ctx.lineTo(i, (1 + max) * amp);
-    }
-    
-    // Styling the wave
-    ctx.strokeStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Draw playback cursor
-    if (cursorRatio > 0 && cursorRatio <= 1) {
-      const cursorX = cursorRatio * width;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillRect(cursorX - 1, 0, 2, height);
-      ctx.fillStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
-      ctx.beginPath();
-      ctx.arc(cursorX, 10, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, []);
-
-  // Update canvas when buffers change
-  useEffect(() => {
-    if (origCanvasRef.current && originalBuffer) {
-      // Fix resolution for high DPI displays
-      const dpr = window.devicePixelRatio || 1;
-      origCanvasRef.current.width = origCanvasRef.current.offsetWidth * dpr;
-      origCanvasRef.current.height = origCanvasRef.current.offsetHeight * dpr;
-      drawWaveform(origCanvasRef.current, originalBuffer, playbackPosOrig, false);
-    }
-  }, [originalBuffer, playbackPosOrig, drawWaveform]);
-
-  useEffect(() => {
-    if (procCanvasRef.current && processedBuffer) {
-      const dpr = window.devicePixelRatio || 1;
-      procCanvasRef.current.width = procCanvasRef.current.offsetWidth * dpr;
-      procCanvasRef.current.height = procCanvasRef.current.offsetHeight * dpr;
-      drawWaveform(procCanvasRef.current, processedBuffer, playbackPosProc, true);
-    }
-  }, [processedBuffer, playbackPosProc, drawWaveform]);
-
-  const processAudio = async () => {
-    if (!originalBuffer) return;
-    const ctx = getSharedAudioContext();
-    setIsProcessing(true);
-    setProgress(0);
-    stopPlayback();
-    pausedAtRef.current = 0;
-
-    // Yield to let React render the loading state
-    await new Promise(r => setTimeout(r, 50));
-
-    try {
-      const sr = originalBuffer.sampleRate;
-      const numChannels = originalBuffer.numberOfChannels;
-      const thresholdMag = Math.pow(10, thresholdDB / 20); // dB to linear
-      
-      const windowSizeSamples = Math.floor(sr * 0.01); // 10ms window
-      const minSilenceSamples = Math.floor(sr * (minSilenceMs / 1000));
-      const paddingSamples = Math.floor(sr * (paddingMs / 1000));
-      
-      const channelData = originalBuffer.getChannelData(0); // Analyze mono mix/channel 0
-      const totalSamples = channelData.length;
-      
-      // 1. Compute RMS for windows and identify silent windows
-      const numWindows = Math.floor(totalSamples / windowSizeSamples);
-      const isSilentWindow = new Array(numWindows).fill(false);
-      
-      for (let i = 0; i < numWindows; i++) {
-        let sumSq = 0;
-        const start = i * windowSizeSamples;
-        for (let j = 0; j < windowSizeSamples; j++) {
-          const sample = channelData[start + j];
-          sumSq += sample * sample;
+    elements.uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.uploadZone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
         }
-        const rms = Math.sqrt(sumSq / windowSizeSamples);
-        if (rms < thresholdMag) {
-          isSilentWindow[i] = true;
+    });
+
+    elements.fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
         }
-      }
+    });
 
-      setProgress(30);
-      await new Promise(r => setTimeout(r, 10)); // UI yield
-
-      // 2. Find continuous silent blocks and map to samples
-      let silentRegions = [];
-      let currentSilenceStart = -1;
-
-      for (let i = 0; i < numWindows; i++) {
-        if (isSilentWindow[i]) {
-          if (currentSilenceStart === -1) currentSilenceStart = i;
-        } else {
-          if (currentSilenceStart !== -1) {
-            const lengthWindows = i - currentSilenceStart;
-            const lengthSamples = lengthWindows * windowSizeSamples;
-            if (lengthSamples >= minSilenceSamples) {
-              silentRegions.push({
-                start: currentSilenceStart * windowSizeSamples,
-                end: i * windowSizeSamples
-              });
-            }
-            currentSilenceStart = -1;
-          }
-        }
-      }
-      // Handle trailing silence
-      if (currentSilenceStart !== -1) {
-        const lengthWindows = numWindows - currentSilenceStart;
-        if (lengthWindows * windowSizeSamples >= minSilenceSamples) {
-           silentRegions.push({
-            start: currentSilenceStart * windowSizeSamples,
-            end: totalSamples
-          });
-        }
-      }
-
-      setProgress(60);
-      await new Promise(r => setTimeout(r, 10));
-
-      // 3. Invert to keepRegions and apply padding
-      let keepRegions = [];
-      let lastEnd = 0;
-      
-      for (const silence of silentRegions) {
-        if (silence.start > lastEnd) {
-          keepRegions.push({
-            start: Math.max(0, lastEnd - paddingSamples),
-            end: Math.min(totalSamples, silence.start + paddingSamples)
-          });
-        }
-        lastEnd = silence.end;
-      }
-      // Trailing keep
-      if (lastEnd < totalSamples) {
-        keepRegions.push({
-          start: Math.max(0, lastEnd - paddingSamples),
-          end: totalSamples
-        });
-      }
-
-      // If no silences found
-      if (silentRegions.length === 0) {
-        keepRegions = [{start: 0, end: totalSamples}];
-      }
-
-      // 4. Merge overlapping keepRegions
-      let mergedKeepRegions = [];
-      if (keepRegions.length > 0) {
-        mergedKeepRegions.push(keepRegions[0]);
-        for (let i = 1; i < keepRegions.length; i++) {
-          const current = keepRegions[i];
-          const lastMerged = mergedKeepRegions[mergedKeepRegions.length - 1];
-          if (current.start <= lastMerged.end) {
-            lastMerged.end = Math.max(lastMerged.end, current.end);
-          } else {
-            mergedKeepRegions.push(current);
-          }
-        }
-      }
-
-      setProgress(80);
-      await new Promise(r => setTimeout(r, 10));
-
-      // 5. Construct new AudioBuffer
-      const totalNewLength = mergedKeepRegions.reduce((acc, reg) => acc + (reg.end - reg.start), 0);
-      
-      if (totalNewLength === 0) {
-        alert("Parameters removed entire audio track!");
-        setIsProcessing(false);
-        return;
-      }
-
-      const newBuffer = ctx.createBuffer(numChannels, totalNewLength, sr);
-      
-      // Copy data with micro-crossfading to avoid clicks
-      const FADE_SAMPLES = Math.min(240, Math.floor(sr * 0.005)); // 5ms fade
-      
-      for (let c = 0; c < numChannels; c++) {
-        const srcData = originalBuffer.getChannelData(c);
-        const dstData = newBuffer.getChannelData(c);
-        let dstOffset = 0;
-
-        for (const reg of mergedKeepRegions) {
-          const len = reg.end - reg.start;
-          const actualFade = Math.min(FADE_SAMPLES, Math.floor(len / 2));
-          for (let i = 0; i < len; i++) {
-            let sample = srcData[reg.start + i];
-            // Fade In
-            if (i < actualFade) {
-              sample *= (i / actualFade);
-            } 
-            // Fade Out
-            else if (i > len - actualFade) {
-              sample *= ((len - i) / actualFade);
-            }
-            dstData[dstOffset + i] = sample;
-          }
-          dstOffset += len;
-        }
-      }
-
-      setProgress(100);
-      setProcessedBuffer(newBuffer);
-      setPlaybackPosProc(0);
-      
-    } catch (e) {
-      console.error(e);
-      alert("Error processing audio.");
-    } finally {
-      setIsProcessing(false);
-      setProgress(0);
-    }
-  };
-
-  const stopPlayback = () => {
-    if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); } catch(e){}
-      try { sourceNodeRef.current.disconnect(); } catch(e){}
-      sourceNodeRef.current = null;
-    }
-    cancelAnimationFrame(animationRef.current);
-    setIsPlayingOrig(false);
-    setIsPlayingProc(false);
-  };
-
-  const togglePlay = async (isOriginal) => {
-    const ctx = getSharedAudioContext();
-    const buffer = isOriginal ? originalBuffer : processedBuffer;
-    if (!buffer) return;
-    
-    const currentlyPlaying = isOriginal ? isPlayingOrig : isPlayingProc;
-    const trackType = isOriginal ? 'orig' : 'proc';
-
-    if (currentlyPlaying) {
-      // Pause logic: Store exact time for seamless resumption
-      const elapsed = ctx.currentTime - startTimeRef.current;
-      pausedAtRef.current += elapsed;
-      stopPlayback();
-      return;
-    }
-
-    // Reset loop if switching tracks entirely
-    if (activeTrackRef.current !== trackType) {
-       pausedAtRef.current = 0;
-       activeTrackRef.current = trackType;
-    }
-    
-    stopPlayback();
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    
-    // Added GainNode to prevent clipping/connection issues on some setups
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = 1.0;
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    const duration = buffer.duration;
-    
-    // Cycle back to beginning if hitting play at the end of the file
-    if (pausedAtRef.current >= duration) {
-       pausedAtRef.current = 0;
-    }
-
-    source.start(0, pausedAtRef.current);
-    sourceNodeRef.current = source;
-    startTimeRef.current = ctx.currentTime;
-    
-    if (isOriginal) setIsPlayingOrig(true);
-    else setIsPlayingProc(true);
-
-    const updateCursor = () => {
-      if (!sourceNodeRef.current) return;
-      const elapsed = (ctx.currentTime - startTimeRef.current) + pausedAtRef.current;
-      const ratio = elapsed / duration;
-      
-      if (ratio >= 1.0) {
+    // File Processing
+    async function handleFile(file) {
+        if (!file) return;
+        
+        const ctx = getSharedAudioContext();
+        fileName = file.name;
+        
+        elements.uploadTitle.innerText = "Processing File...";
+        elements.uploadDesc.innerText = fileName;
+        
+        // Reset state
+        processedBuffer = null;
+        playbackPosOrig = 0;
+        playbackPosProc = 0;
+        pausedAt = 0;
+        activeTrack = null;
         stopPlayback();
-        pausedAtRef.current = 0;
-        if (isOriginal) setPlaybackPosOrig(0);
-        else setPlaybackPosProc(0);
-      } else {
-        if (isOriginal) setPlaybackPosOrig(ratio);
-        else setPlaybackPosProc(ratio);
-        animationRef.current = requestAnimationFrame(updateCursor);
-      }
-    };
-    animationRef.current = requestAnimationFrame(updateCursor);
-  };
+        updateUIState();
 
-  const handleDownload = () => {
-    if (!processedBuffer) return;
-    const wavBlob = audioBufferToWav(processedBuffer);
-    const url = URL.createObjectURL(wavBlob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    
-    let downloadName = "";
-    if (customFileName.trim() !== "") {
-      downloadName = customFileName.trim();
-      if (!downloadName.toLowerCase().endsWith('.wav')) {
-         downloadName += '.wav';
-      }
-    } else {
-       downloadName = `processed_${fileName.replace(/\.[^/.]+$/, "")}.wav`;
-    }
-    
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  };
-
-  return (
-    <>
-      <style>{tactileStyles}</style>
-      <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
-        
-        <div className="w-full max-w-6xl space-y-8">
-          
-          {/* Header */}
-          <div className="text-center mb-12 relative flex flex-col items-center">
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-[--text-main]">
-              Smart <span className="text-transparent bg-clip-text bg-gradient-to-r from-[--accent-cyan] to-[--accent-pink]">Silence Remover</span>
-            </h1>
-            <p className="text-[--text-muted] font-medium tracking-wide">Clean Audio Processor • 3D Tactile Engine</p>
-            
-            <button 
-              onClick={resetAll}
-              className="absolute right-0 top-0 tactile-btn !px-4 !py-2 text-sm text-[--text-muted] hover:!text-[--accent-pink]"
-              title="Reset Workspace"
-            >
-              <Icons.Reset />
-              Reset
-            </button>
-          </div>
-
-          {/* Main Workspace Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Left Column: Waveforms & Upload */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-              
-              {/* Upload Zone */}
-              <div 
-                className={`tactile-panel p-10 flex flex-col items-center justify-center gap-5 transition-all duration-300 border-2 border-dashed ${
-                  isDragging 
-                    ? 'border-[--accent-cyan] bg-[--bg-base] shadow-[0_0_30px_rgba(0,212,255,0.15)] scale-[1.02]' 
-                    : 'border-[var(--border-glass)] hover:border-[rgba(255,255,255,0.1)]'
-                }`}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  const ctx = getSharedAudioContext();
-                  if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
-                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    handleFile(e.dataTransfer.files[0]);
-                  }
-                }}
-              >
-                <div className={`p-5 rounded-full transition-colors ${isDragging ? 'bg-[--accent-cyan] text-[--bg-base]' : 'bg-[--bg-base] text-[--text-muted]'}`}>
-                  <Icons.Upload />
-                </div>
-                <div className="text-center">
-                  <h3 className="font-bold text-xl mb-2 text-[--text-main]">
-                    {isDragging ? 'Drop audio file here!' : 'Upload Source Audio'}
-                  </h3>
-                  <p className="text-sm text-[--text-muted] mb-6 max-w-xs mx-auto">
-                    {fileName ? `Loaded: ${fileName}` : "Drag & drop an audio file here, or click to browse your device."}
-                  </p>
-                  <label className="tactile-btn cursor-pointer inline-flex">
-                    <span>Browse Files</span>
-                    <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
-                  </label>
-                </div>
-              </div>
-
-              {/* Original Waveform */}
-              <div className={`tactile-panel p-6 transition-opacity duration-300 ${!originalBuffer ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex justify-between items-center mb-5">
-                  <div className="flex items-center gap-4">
-                    <button 
-                      className="tactile-btn !p-3 !rounded-full"
-                      onClick={() => togglePlay(true)}
-                    >
-                      {isPlayingOrig ? <Icons.Pause /> : <Icons.Play />}
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="font-mono text-[--text-main] font-medium tracking-wide">
-                        {originalBuffer ? formatTime(playbackPosOrig * originalBuffer.duration) : "00:00.00"}
-                      </span>
-                      <span className="font-mono text-xs text-[--text-muted]">
-                        Total: {originalBuffer ? formatTime(originalBuffer.duration) : "00:00.00"}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs uppercase tracking-widest text-[--text-muted] font-bold">Original</span>
-                </div>
-                <div className="tactile-inset p-2">
-                  <canvas ref={origCanvasRef} className="w-full bg-transparent"></canvas>
-                </div>
-              </div>
-
-              {/* Processed Waveform */}
-              <div className={`tactile-panel p-6 transition-opacity duration-300 ${!processedBuffer ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex justify-between items-center mb-5">
-                  <div className="flex items-center gap-4">
-                    <button 
-                      className="tactile-btn !p-3 !rounded-full"
-                      onClick={() => togglePlay(false)}
-                    >
-                      {isPlayingProc ? <Icons.Pause /> : <Icons.Play />}
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="font-mono text-[--text-main] font-medium tracking-wide">
-                        {processedBuffer ? formatTime(playbackPosProc * processedBuffer.duration) : "00:00.00"}
-                      </span>
-                      <span className="font-mono text-xs text-[--text-muted]">
-                        Total: {processedBuffer ? formatTime(processedBuffer.duration) : "00:00.00"}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs uppercase tracking-widest text-[--accent-cyan] font-bold">Processed</span>
-                </div>
-                <div className="tactile-inset p-2">
-                  <canvas ref={procCanvasRef} className="w-full bg-transparent"></canvas>
-                </div>
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const arrayBuffer = event.target.result;
+                originalBuffer = await ctx.decodeAudioData(arrayBuffer);
+                runSmartAnalysis(originalBuffer);
                 
-                {/* Stats Summary */}
-                {processedBuffer && originalBuffer && (
-                  <div className="mt-5 flex gap-4 text-sm bg-[--bg-base] p-4 rounded-xl border border-[--border-glass] shadow-inner">
-                    <div className="flex-1 text-center border-r border-[--border-glass]">
-                      <div className="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Time Saved</div>
-                      <div className="font-mono text-[--accent-pink] font-bold text-lg">
-                        {formatTime(originalBuffer.duration - processedBuffer.duration)}
-                      </div>
-                    </div>
-                    <div className="flex-1 text-center">
-                      <div className="text-[--text-muted] text-xs uppercase tracking-wider font-semibold mb-1">Reduction</div>
-                      <div className="font-mono text-[--accent-cyan] font-bold text-lg">
-                        {Math.round((1 - (processedBuffer.duration / originalBuffer.duration)) * 100)}%
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                elements.uploadTitle.innerText = "Audio Loaded";
+                
+                // Update original canvas size and draw
+                updateCanvases();
+                updateUIState();
+            } catch (err) {
+                alert("Error decoding audio file. Ensure it's a valid audio format.");
+                elements.uploadTitle.innerText = "Upload Source Audio";
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
 
-            </div>
+    // Smart Analysis
+    function runSmartAnalysis(buffer) {
+        const data = buffer.getChannelData(0);
+        let peaks = [];
+        const step = Math.floor(buffer.sampleRate * 0.05); // 50ms chunks
+        
+        for (let i = 0; i < data.length; i += step) {
+            let chunkSumSq = 0;
+            for (let j = 0; j < step && i + j < data.length; j++) {
+                chunkSumSq += data[i + j] * data[i + j];
+            }
+            const rms = Math.sqrt(chunkSumSq / step);
+            if (rms > 0) peaks.push(rms);
+        }
+        
+        if (peaks.length === 0) return;
+        
+        peaks.sort((a, b) => a - b);
+        const noiseFloorRMS = peaks[Math.floor(peaks.length * 0.1)] || 0.001; // 10th percentile
+        const noiseFloorDB = 20 * Math.log10(noiseFloorRMS);
+        const suggestedDB = Math.min(-10, Math.max(-70, Math.round(noiseFloorDB + 6))); 
+        
+        updateThresholdByDB(suggestedDB);
+        updateDuration(300);
+        updatePadding(100);
+    }
 
-            {/* Right Column: Controls */}
-            <div className="lg:col-span-5 xl:col-span-4 space-y-6">
-              
-              <div className="tactile-panel p-6 h-full flex flex-col">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[--border-glass]">
-                  <div className="text-[--accent-cyan]"><Icons.Settings /></div>
-                  <h3 className="font-bold text-xl text-[--text-main]">Parameters</h3>
-                </div>
+    // --- STREAMING_CHUNK:Implementing Parameter Controls ---
+    
+    // Parameter Updates
+    function updateThresholdByPercent(percent) {
+        thresholdPercent = percent;
+        thresholdDB = Math.round(-80 + (percent / 100) * 80);
+        elements.sliderThreshold.value = thresholdPercent;
+        elements.valPercent.innerText = thresholdPercent;
+        elements.valDb.innerText = thresholdDB;
+    }
 
-                <div className="space-y-6 flex-1">
-                  
-                  {/* Smart Actions */}
-                  <div className="parameter-group space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[--text-main]">
-                      <span className="text-[--accent-pink]"><Icons.Sparkles /></span> Smart Presets
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => applyPreset('natural')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">
-                        Auto-Detect (Natural)
-                      </button>
-                      <button onClick={() => applyPreset('aggressive')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface]">
-                        Fast Cut (Aggressive)
-                      </button>
-                      <button onClick={() => applyPreset('podcast')} className="tactile-btn !p-2.5 text-xs text-center !bg-[--panel-surface] col-span-2">
-                        Podcast Smoothing
-                      </button>
-                    </div>
-                  </div>
+    function updateThresholdByDB(db) {
+        thresholdDB = db;
+        thresholdPercent = Math.round(((db + 80) / 80) * 100);
+        elements.sliderThreshold.value = thresholdPercent;
+        elements.valPercent.innerText = thresholdPercent;
+        elements.valDb.innerText = thresholdDB;
+    }
 
-                  {/* Threshold Control */}
-                  <div className="parameter-group">
-                    <div className="flex justify-between mb-3">
-                      <label className="text-sm font-semibold text-[--text-main]">Sensitivity (%)</label>
-                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{thresholdPercent}% <span className="text-[--text-muted] text-xs font-normal">({thresholdDB} dB)</span></span>
-                    </div>
-                    <input 
-                      type="range" min="0" max="100" step="1"
-                      value={thresholdPercent} onChange={(e) => handlePercentChange(parseInt(e.target.value))}
-                      className="tactile-slider"
-                    />
-                    <p className="text-xs text-[--text-muted] mt-3 font-medium">Higher percentage removes more audio.</p>
-                  </div>
+    function updateDuration(ms) {
+        minSilenceMs = ms;
+        elements.sliderDuration.value = ms;
+        elements.valDuration.innerText = ms;
+    }
 
-                  {/* Min Silence Duration */}
-                  <div className="parameter-group">
-                    <div className="flex justify-between mb-3">
-                      <label className="text-sm font-semibold text-[--text-main]">Min Duration</label>
-                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{minSilenceMs} ms</span>
-                    </div>
-                    <input 
-                      type="range" min="50" max="2000" step="50"
-                      value={minSilenceMs} onChange={(e) => setMinSilenceMs(parseInt(e.target.value))}
-                      className="tactile-slider"
-                    />
-                    <p className="text-xs text-[--text-muted] mt-3 font-medium">How long silence must last to be cut.</p>
-                  </div>
+    function updatePadding(ms) {
+        paddingMs = ms;
+        elements.sliderPadding.value = ms;
+        elements.valPadding.innerText = ms;
+    }
 
-                  {/* Padding Control */}
-                  <div className="parameter-group">
-                    <div className="flex justify-between mb-3">
-                      <label className="text-sm font-semibold text-[--text-main]">Edge Padding</label>
-                      <span className="font-mono text-sm text-[--accent-cyan] font-semibold">{paddingMs} ms</span>
-                    </div>
-                    <input 
-                      type="range" min="0" max="500" step="10"
-                      value={paddingMs} onChange={(e) => setPaddingMs(parseInt(e.target.value))}
-                      className="tactile-slider"
-                    />
-                    <p className="text-xs text-[--text-muted] mt-3 font-medium">Audio preserved around cuts for natural speech.</p>
-                  </div>
+    // Event Listeners for Sliders
+    elements.sliderThreshold.addEventListener('input', (e) => updateThresholdByPercent(parseInt(e.target.value)));
+    elements.sliderDuration.addEventListener('input', (e) => updateDuration(parseInt(e.target.value)));
+    elements.sliderPadding.addEventListener('input', (e) => updatePadding(parseInt(e.target.value)));
 
-                </div>
+    // Smart Presets
+    elements.presetNatural.addEventListener('click', () => {
+        if (originalBuffer) runSmartAnalysis(originalBuffer);
+    });
+    
+    elements.presetFast.addEventListener('click', () => {
+        if (!originalBuffer) return;
+        updateThresholdByDB(thresholdDB + 5 > -10 ? -10 : thresholdDB + 5);
+        updateDuration(100);
+        updatePadding(20);
+    });
+    
+    elements.presetPodcast.addEventListener('click', () => {
+        if (!originalBuffer) return;
+        updateDuration(500);
+        updatePadding(150);
+    });
 
-                {/* Actions */}
-                <div className="pt-8 mt-auto space-y-5">
-                  <button 
-                    className="tactile-btn primary w-full !py-4 text-base font-bold tracking-wide"
-                    onClick={processAudio}
-                    disabled={!originalBuffer || isProcessing}
-                  >
-                    {isProcessing ? (
-                      <span className="flex items-center gap-3">
-                         <div className="w-5 h-5 border-2 border-[--bg-base] border-t-transparent rounded-full animate-spin"></div>
-                         Processing {progress}%
-                      </span>
-                    ) : (
-                      <>
-                        <Icons.Scissors />
-                        Remove Dead Space
-                      </>
-                    )}
-                  </button>
+    // Reset Button
+    elements.btnReset.addEventListener('click', () => {
+        stopPlayback();
+        originalBuffer = null;
+        processedBuffer = null;
+        fileName = "";
+        elements.inputFilename.value = "";
+        playbackPosOrig = 0;
+        playbackPosProc = 0;
+        pausedAt = 0;
+        
+        updateThresholdByPercent(43);
+        updateDuration(300);
+        updatePadding(50);
+        
+        elements.uploadTitle.innerText = "Upload Source Audio";
+        elements.uploadDesc.innerText = "Drag & drop an audio file here, or click to browse your device.";
+        elements.fileInput.value = "";
+        
+        updateUIState();
+        clearCanvas(elements.canvasOrig);
+        clearCanvas(elements.canvasProc);
+    });
 
-                  <div className="pt-5 border-t border-[--border-glass] space-y-4">
-                    <label className="block text-xs font-bold text-[--text-muted] uppercase tracking-wider">
-                      Export Settings
-                    </label>
-                    <input 
-                      type="text" 
-                      className="tactile-input" 
-                      placeholder={fileName ? `processed_${fileName.replace(/\.[^/.]+$/, "")}` : "Custom file name..."}
-                      value={customFileName}
-                      onChange={(e) => setCustomFileName(e.target.value)}
-                      disabled={!processedBuffer}
-                    />
-                    <button 
-                      className="tactile-btn w-full !py-3 font-semibold"
-                      onClick={handleDownload}
-                      disabled={!processedBuffer || isProcessing}
-                    >
-                      <Icons.Download />
-                      Export WAV File
-                    </button>
-                  </div>
-                </div>
+    // --- STREAMING_CHUNK:Developing Waveform Rendering Engine ---
+    
+    function clearCanvas(canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
-              </div>
+    function drawWaveform(canvas, buffer, cursorRatio, isProcessed = false) {
+        if (!canvas || !buffer) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        ctx.clearRect(0, 0, width, height);
 
-            </div>
+        const data = buffer.getChannelData(0);
+        const step = Math.ceil(data.length / width);
+        const amp = height / 2;
+        
+        // Draw grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=0; i<width; i+=50) { ctx.moveTo(i, 0); ctx.lineTo(i, height); }
+        ctx.moveTo(0, amp); ctx.lineTo(width, amp);
+        ctx.stroke();
 
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+        // Draw waveform
+        ctx.beginPath();
+        ctx.moveTo(0, amp);
+        
+        for (let i = 0; i < width; i++) {
+            let min = 1.0;
+            let max = -1.0;
+            const offset = i * step;
+            for (let j = 0; j < step && offset + j < data.length; j++) {
+                const datum = data[offset + j];
+                if (datum < min) min = datum;
+                if (datum > max) max = datum;
+            }
+            ctx.lineTo(i, (1 + min) * amp);
+            ctx.lineTo(i, (1 + max) * amp);
+        }
+        
+        ctx.strokeStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Draw playback cursor
+        if (cursorRatio > 0 && cursorRatio <= 1) {
+            const cursorX = cursorRatio * width;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillRect(cursorX - 1, 0, 2, height);
+            ctx.fillStyle = isProcessed ? '#00e5ff' : '#ff2a6d';
+            ctx.beginPath();
+            ctx.arc(cursorX, 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function updateCanvases() {
+        const dpr = window.devicePixelRatio || 1;
+        
+        if (originalBuffer) {
+            elements.canvasOrig.width = elements.canvasOrig.offsetWidth * dpr;
+            elements.canvasOrig.height = elements.canvasOrig.offsetHeight * dpr;
+            drawWaveform(elements.canvasOrig, originalBuffer, playbackPosOrig, false);
+        }
+        
+        if (processedBuffer) {
+            elements.canvasProc.width = elements.canvasProc.offsetWidth * dpr;
+            elements.canvasProc.height = elements.canvasProc.offsetHeight * dpr;
+            drawWaveform(elements.canvasProc, processedBuffer, playbackPosProc, true);
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        if (originalBuffer || processedBuffer) {
+            updateCanvases();
+        }
+    });
+
+    // --- STREAMING_CHUNK:Implementing Playback Engine ---
+
+    function stopPlayback() {
+        if (sourceNode) {
+            try { sourceNode.stop(); } catch(e){}
+            try { sourceNode.disconnect(); } catch(e){}
+            sourceNode = null;
+        }
+        cancelAnimationFrame(animationRef);
+        isPlayingOrig = false;
+        isPlayingProc = false;
+        
+        // Update Icons
+        elements.btnPlayOrig.querySelector('.icon-play').classList.remove('hidden');
+        elements.btnPlayOrig.querySelector('.icon-pause').classList.add('hidden');
+        elements.btnPlayProc.querySelector('.icon-play').classList.remove('hidden');
+        elements.btnPlayProc.querySelector('.icon-pause').classList.add('hidden');
+    }
+
+    async function togglePlay(isOriginal) {
+        const ctx = getSharedAudioContext();
+        const buffer = isOriginal ? originalBuffer : processedBuffer;
+        if (!buffer) return;
+        
+        const currentlyPlaying = isOriginal ? isPlayingOrig : isPlayingProc;
+        const trackType = isOriginal ? 'orig' : 'proc';
+
+        if (currentlyPlaying) {
+            // Pause
+            const elapsed = ctx.currentTime - startTime;
+            pausedAt += elapsed;
+            stopPlayback();
+            return;
+        }
+
+        // Reset if switching tracks
+        if (activeTrack !== trackType) {
+            pausedAt = 0;
+            activeTrack = trackType;
+        }
+        
+        stopPlayback();
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 1.0;
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        const duration = buffer.duration;
+        if (pausedAt >= duration) pausedAt = 0;
+
+        source.start(0, pausedAt);
+        sourceNode = source;
+        startTime = ctx.currentTime;
+        
+        if (isOriginal) {
+            isPlayingOrig = true;
+            elements.btnPlayOrig.querySelector('.icon-play').classList.add('hidden');
+            elements.btnPlayOrig.querySelector('.icon-pause').classList.remove('hidden');
+        } else {
+            isPlayingProc = true;
+            elements.btnPlayProc.querySelector('.icon-play').classList.add('hidden');
+            elements.btnPlayProc.querySelector('.icon-pause').classList.remove('hidden');
+        }
+
+        const updateCursor = () => {
+            if (!sourceNode) return;
+            const elapsed = (ctx.currentTime - startTime) + pausedAt;
+            const ratio = elapsed / duration;
+            
+            if (ratio >= 1.0) {
+                stopPlayback();
+                pausedAt = 0;
+                if (isOriginal) { playbackPosOrig = 0; elements.timeOrig.innerText = formatTime(0); }
+                else { playbackPosProc = 0; elements.timeProc.innerText = formatTime(0); }
+                updateCanvases();
+            } else {
+                if (isOriginal) { 
+                    playbackPosOrig = ratio; 
+                    elements.timeOrig.innerText = formatTime(elapsed);
+                }
+                else { 
+                    playbackPosProc = ratio; 
+                    elements.timeProc.innerText = formatTime(elapsed);
+                }
+                updateCanvases();
+                animationRef = requestAnimationFrame(updateCursor);
+            }
+        };
+        animationRef = requestAnimationFrame(updateCursor);
+    }
+
+    elements.btnPlayOrig.addEventListener('click', () => togglePlay(true));
+    elements.btnPlayProc.addEventListener('click', () => togglePlay(false));
+
+    // --- STREAMING_CHUNK:Building Audio Processing Algorithm ---
+
+    function setProcessingUI(isProcessing, progress = 0) {
+        if (isProcessing) {
+            elements.btnProcess.disabled = true;
+            elements.spinnerProcess.classList.remove('hidden');
+            elements.iconScissors.classList.add('hidden');
+            elements.textProcess.innerText = `Processing ${progress}%`;
+        } else {
+            elements.btnProcess.disabled = !originalBuffer;
+            elements.spinnerProcess.classList.add('hidden');
+            elements.iconScissors.classList.remove('hidden');
+            elements.textProcess.innerText = "Remove Dead Space";
+        }
+    }
+
+    elements.btnProcess.addEventListener('click', async () => {
+        if (!originalBuffer) return;
+        const ctx = getSharedAudioContext();
+        setProcessingUI(true, 0);
+        stopPlayback();
+        pausedAt = 0;
+
+        // Yield for UI update
+        await new Promise(r => setTimeout(r, 50));
+
+        try {
+            const sr = originalBuffer.sampleRate;
+            const numChannels = originalBuffer.numberOfChannels;
+            const thresholdMag = Math.pow(10, thresholdDB / 20); 
+            
+            const windowSizeSamples = Math.floor(sr * 0.01); // 10ms
+            const minSilenceSamples = Math.floor(sr * (minSilenceMs / 1000));
+            const paddingSamples = Math.floor(sr * (paddingMs / 1000));
+            
+            const channelData = originalBuffer.getChannelData(0); 
+            const totalSamples = channelData.length;
+            
+            const numWindows = Math.floor(totalSamples / windowSizeSamples);
+            const isSilentWindow = new Array(numWindows).fill(false);
+            
+            // 1. RMS Calculation
+            for (let i = 0; i < numWindows; i++) {
+                let sumSq = 0;
+                const start = i * windowSizeSamples;
+                for (let j = 0; j < windowSizeSamples; j++) {
+                    const sample = channelData[start + j];
+                    sumSq += sample * sample;
+                }
+                const rms = Math.sqrt(sumSq / windowSizeSamples);
+                if (rms < thresholdMag) {
+                    isSilentWindow[i] = true;
+                }
+            }
+
+            setProcessingUI(true, 30);
+            await new Promise(r => setTimeout(r, 10));
+
+            // 2. Find continuous silence
+            let silentRegions = [];
+            let currentSilenceStart = -1;
+
+            for (let i = 0; i < numWindows; i++) {
+                if (isSilentWindow[i]) {
+                    if (currentSilenceStart === -1) currentSilenceStart = i;
+                } else {
+                    if (currentSilenceStart !== -1) {
+                        const lengthSamples = (i - currentSilenceStart) * windowSizeSamples;
+                        if (lengthSamples >= minSilenceSamples) {
+                            silentRegions.push({
+                                start: currentSilenceStart * windowSizeSamples,
+                                end: i * windowSizeSamples
+                            });
+                        }
+                        currentSilenceStart = -1;
+                    }
+                }
+            }
+            if (currentSilenceStart !== -1) {
+                const lengthSamples = (numWindows - currentSilenceStart) * windowSizeSamples;
+                if (lengthSamples >= minSilenceSamples) {
+                    silentRegions.push({
+                        start: currentSilenceStart * windowSizeSamples,
+                        end: totalSamples
+                    });
+                }
+            }
+
+            setProcessingUI(true, 60);
+            await new Promise(r => setTimeout(r, 10));
+
+            // 3. Keep Regions and Padding
+            let keepRegions = [];
+            let lastEnd = 0;
+            
+            for (const silence of silentRegions) {
+                if (silence.start > lastEnd) {
+                    keepRegions.push({
+                        start: Math.max(0, lastEnd - paddingSamples),
+                        end: Math.min(totalSamples, silence.start + paddingSamples)
+                    });
+                }
+                lastEnd = silence.end;
+            }
+            if (lastEnd < totalSamples) {
+                keepRegions.push({
+                    start: Math.max(0, lastEnd - paddingSamples),
+                    end: totalSamples
+                });
+            }
+
+            if (silentRegions.length === 0) {
+                keepRegions = [{start: 0, end: totalSamples}];
+            }
+
+            // 4. Merge overlapping regions
+            let mergedKeepRegions = [];
+            if (keepRegions.length > 0) {
+                mergedKeepRegions.push(keepRegions[0]);
+                for (let i = 1; i < keepRegions.length; i++) {
+                    const current = keepRegions[i];
+                    const lastMerged = mergedKeepRegions[mergedKeepRegions.length - 1];
+                    if (current.start <= lastMerged.end) {
+                        lastMerged.end = Math.max(lastMerged.end, current.end);
+                    } else {
+                        mergedKeepRegions.push(current);
+                    }
+                }
+            }
+
+            setProcessingUI(true, 80);
+            await new Promise(r => setTimeout(r, 10));
+
+            // 5. Build new buffer
+            const totalNewLength = mergedKeepRegions.reduce((acc, reg) => acc + (reg.end - reg.start), 0);
+            
+            if (totalNewLength === 0) {
+                alert("Parameters removed entire audio track!");
+                setProcessingUI(false);
+                return;
+            }
+
+            const newBuffer = ctx.createBuffer(numChannels, totalNewLength, sr);
+            const FADE_SAMPLES = Math.min(240, Math.floor(sr * 0.005)); // 5ms fade
+            
+            for (let c = 0; c < numChannels; c++) {
+                const srcData = originalBuffer.getChannelData(c);
+                const dstData = newBuffer.getChannelData(c);
+                let dstOffset = 0;
+
+                for (const reg of mergedKeepRegions) {
+                    const len = reg.end - reg.start;
+                    const actualFade = Math.min(FADE_SAMPLES, Math.floor(len / 2));
+                    for (let i = 0; i < len; i++) {
+                        let sample = srcData[reg.start + i];
+                        if (i < actualFade) sample *= (i / actualFade);
+                        else if (i > len - actualFade) sample *= ((len - i) / actualFade);
+                        dstData[dstOffset + i] = sample;
+                    }
+                    dstOffset += len;
+                }
+            }
+
+            processedBuffer = newBuffer;
+            playbackPosProc = 0;
+            elements.timeProc.innerText = formatTime(0);
+            elements.totalProc.innerText = `Total: ${formatTime(processedBuffer.duration)}`;
+            
+            // Generate default export filename
+            elements.inputFilename.placeholder = fileName ? `processed_${fileName.replace(/\.[^/.]+$/, "")}` : "Custom file name...";
+
+            updateUIState();
+            updateCanvases();
+            
+        } catch (e) {
+            console.error(e);
+            alert("Error processing audio.");
+        } finally {
+            setProcessingUI(false);
+        }
+    });
+
+    // --- STREAMING_CHUNK:Finalizing UI States and Exports ---
+
+    elements.btnExport.addEventListener('click', () => {
+        if (!processedBuffer) return;
+        const wavBlob = audioBufferToWav(processedBuffer);
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        
+        let customName = elements.inputFilename.value.trim();
+        let downloadName = "";
+        
+        if (customName !== "") {
+            downloadName = customName;
+            if (!downloadName.toLowerCase().endsWith('.wav')) {
+                downloadName += '.wav';
+            }
+        } else {
+            downloadName = `processed_${fileName.replace(/\.[^/.]+$/, "")}.wav`;
+        }
+        
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    });
+
+    function updateUIState() {
+        if (originalBuffer) {
+            elements.panelOrig.classList.remove('opacity-40', 'pointer-events-none');
+            elements.totalOrig.innerText = `Total: ${formatTime(originalBuffer.duration)}`;
+            elements.btnProcess.disabled = false;
+        } else {
+            elements.panelOrig.classList.add('opacity-40', 'pointer-events-none');
+            elements.totalOrig.innerText = `Total: 00:00.00`;
+            elements.timeOrig.innerText = "00:00.00";
+            elements.btnProcess.disabled = true;
+        }
+
+        if (processedBuffer && originalBuffer) {
+            elements.panelProc.classList.remove('opacity-40', 'pointer-events-none');
+            elements.statsSummary.classList.remove('hidden');
+            elements.statsSummary.classList.add('flex');
+            
+            elements.statTimeSaved.innerText = formatTime(originalBuffer.duration - processedBuffer.duration);
+            elements.statReduction.innerText = Math.round((1 - (processedBuffer.duration / originalBuffer.duration)) * 100) + '%';
+            
+            elements.inputFilename.disabled = false;
+            elements.btnExport.disabled = false;
+        } else {
+            elements.panelProc.classList.add('opacity-40', 'pointer-events-none');
+            elements.statsSummary.classList.add('hidden');
+            elements.statsSummary.classList.remove('flex');
+            
+            elements.inputFilename.disabled = true;
+            elements.btnExport.disabled = true;
+            elements.totalProc.innerText = `Total: 00:00.00`;
+            elements.timeProc.innerText = "00:00.00";
+        }
+    }
+</script>
+</body>
+</html>
